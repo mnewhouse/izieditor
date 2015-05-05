@@ -111,6 +111,11 @@ namespace components
         const std::vector<ControlPoint>& control_points() const;
         core::Rotation<double> start_direction() const;
 
+        void define_pit(core::IntRect pit);
+        void undefine_pit();
+
+        const core::IntRect* pit() const;
+
         void set_size(Vector2u size);
         void set_num_levels(std::size_t levels);
 

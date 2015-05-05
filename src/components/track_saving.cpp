@@ -57,7 +57,7 @@ void components::save_track(const Track& track, const std::string& file_name)
     auto track_size = track.size();
     out << "Size td " << track.num_levels() << " " << track_size.x << " " << track_size.y << "\n";
     out << "Hash 0 0 0 0\n"; // TODO
-    out << "Maker " << track.author() << "\n";
+    out << "Maker " << (track.author().empty() ? "Anonymous" : track.author()) << "\n";
     out << "FormatVersion 2\n";
 
     const auto& pattern = track.pattern();
@@ -86,7 +86,25 @@ void components::save_track(const Track& track, const std::string& file_name)
         out << "  Point " << point.start.x << " " << point.start.y << " " << point.length << " " << direction << "\n";
     }
     out << "End\n";
-    
+
+    if (auto pit = track.pit())
+    {
+        out << "Pit " << pit->left << " " << pit->top << " " << pit->width << " " << pit->height << "\n";
+    }
+
+    const auto& start_points = track.start_points();
+    if (!start_points.empty())
+    {
+        out << "StartPoints " << start_points.size() << "\n";
+
+        for (const auto& point : start_points)
+        {
+            auto degrees = static_cast<std::int32_t>(point.rotation.degrees(core::rotation::absolute));
+            out << "  Point " << point.position.x << " " << point.position.y << " " << degrees << "\n";
+        }
+
+        out << "End\n";
+    }    
 
     for (const auto& layer : track.layers())
     {

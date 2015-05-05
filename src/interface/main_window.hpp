@@ -68,6 +68,8 @@ namespace interface
         void tool_enabled(EditorTool tool);
         void tool_disabled(EditorTool tool);
 
+        void clear_tool_info();
+
         void placement_tile_changed(const components::TileGroupDefinition* tile_group);
         void placement_tile_rotated(std::int32_t rotation);
 
@@ -82,6 +84,9 @@ namespace interface
 
         void tiles_movement_finished();
         void tiles_rotation_finished();
+
+        void pit_defined(core::IntRect);
+        void pit_undefined();
 
         void show_fill_dialog();
 
@@ -105,7 +110,10 @@ namespace interface
         void toggle_layer_view();
         void toggle_history_view();
 
+        void action_performed();
+
     private:
+        virtual void closeEvent(QCloseEvent*) override;
         void set_tool_enabled(EditorTool tool, bool enabled);
 
         QAction* tool_action(EditorTool tool) const;
@@ -122,6 +130,8 @@ namespace interface
         QLabel* tool_info_label_ = nullptr;
         QLabel* secondary_tool_info_label_ = nullptr;
         QLabel* position_label_ = nullptr;
+
+        bool saved_ = true;
     };
 }
 

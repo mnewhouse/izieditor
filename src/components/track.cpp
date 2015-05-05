@@ -49,6 +49,7 @@ namespace components
 
         std::vector<StartPoint> start_points_;
         boost::optional<core::Rotation<double>> start_direction_override_;
+        boost::optional<core::IntRect> pit_;
 
         std::vector<ControlPoint> control_points_;
 
@@ -372,5 +373,20 @@ namespace components
         }
 
         return Rotation<double>::degrees(0.0);
+    }
+
+    void Track::define_pit(core::IntRect pit)
+    {
+        track_features_->pit_ = pit;
+    }
+
+    void Track::undefine_pit()
+    {
+        track_features_->pit_ = boost::none;
+    }
+
+    const core::IntRect* Track::pit() const
+    {
+        return track_features_->pit_.get_ptr();
     }
 }

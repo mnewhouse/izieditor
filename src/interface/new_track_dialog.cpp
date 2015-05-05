@@ -47,6 +47,22 @@ namespace interface
         connect(widgets_.confirmButton, SIGNAL(rejected()), this, SLOT(cancel_track_creation()));
 
         connect(widgets_.trackName, SIGNAL(textChanged(const QString&)), this, SLOT(validate_track_name(const QString&)));
+
+        widgets_.addAssetButton->setDefaultAction(widgets_.actionAddAsset);
+        widgets_.removeAssetButton->setDefaultAction(widgets_.actionRemoveAsset);
+
+        connect(widgets_.actionAddAsset, SIGNAL(triggered()), this, SLOT(add_asset()));
+        connect(widgets_.actionRemoveAsset, SIGNAL(triggered()), this, SLOT(remove_asset()));
+    }
+
+    void NewTrackDialog::showEvent(QShowEvent*)
+    {
+        auto assetsList = widgets_.assetsList;
+        for (int row = 0, row_count = assetsList->model()->rowCount(); row != row_count; ++row)
+        {
+            auto item = assetsList->item(row);
+            item->setFlags(Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        }
     }
 
     void NewTrackDialog::browse_locations()
@@ -94,6 +110,32 @@ namespace interface
             hide();
         }
     }
+
+    void NewTrackDialog::add_asset()
+    {
+        auto assetsList = widgets_.assetsList;
+        int row = assetsList->model()->rowCount();
+        assetsList->addItem("");
+        assetsList->setCurrentRow(row);
+
+        auto index = assetsList->model()->index(row, 0);
+        auto item = widgets_.assetsList->item(row);
+
+        item->setFlags(Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        
+        widgets_.assetsList->edit(index);
+    }
+    
+    void NewTrackDialog::remove_asset()
+    {
+        auto assetsList = widgets_.assetsList;
+        auto row = assetsList->currentRow();
+        if (auto item = assetsList->item(row))
+        {
+            assetsList->model()->removeRow(row);
+        }
+    }
+
 
     void NewTrackDialog::cancel_track_creation()
     {

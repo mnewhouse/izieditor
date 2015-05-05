@@ -48,7 +48,7 @@ namespace interface
         connect(ui_.buttonBox, SIGNAL(accepted()), this, SLOT(dispatch_fill_signal()));
 
         connect(ui_.randomizeRotationCheckBox, SIGNAL(stateChanged(int)),
-                this, SLOT(randomize_rotation_state_change(int)));
+            this, SLOT(randomize_rotation_state_change(int)));
     }
 
     void FillDialog::dispatch_fill_signal()

@@ -41,6 +41,9 @@
     </property>
     <item>
      <widget class="interface::EditorCanvas" name="editorCanvas" native="true">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>100</horstretch>
@@ -76,6 +79,9 @@
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>Edit</string>
     </property>
@@ -93,15 +99,22 @@
     <addaction name="actionFill_Area"/>
    </widget>
    <widget class="QMenu" name="menuMode">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>Mode</string>
     </property>
     <addaction name="actionTiles"/>
     <addaction name="actionControl_Points"/>
     <addaction name="actionStart_Points"/>
+    <addaction name="actionPit"/>
     <addaction name="actionPattern"/>
    </widget>
    <widget class="QMenu" name="menuView">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>View</string>
     </property>
@@ -119,6 +132,9 @@
     <addaction name="menuWindows"/>
    </widget>
    <widget class="QMenu" name="menuLayer">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>Layer</string>
     </property>
@@ -278,6 +294,9 @@
         </property>
         <item>
          <widget class="QToolButton" name="history_undoButton">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="text">
            <string>...</string>
           </property>
@@ -292,6 +311,9 @@
         </item>
         <item>
          <widget class="QToolButton" name="history_redoButton">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
           <property name="autoFillBackground">
            <bool>false</bool>
           </property>
@@ -446,7 +468,7 @@
         <item>
          <widget class="QToolButton" name="newLayerButton">
           <property name="enabled">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
           <property name="text">
            <string>...</string>
@@ -463,7 +485,7 @@
         <item>
          <widget class="QToolButton" name="deleteLayerButton">
           <property name="enabled">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
           <property name="text">
            <string>...</string>
@@ -480,7 +502,7 @@
         <item>
          <widget class="QToolButton" name="layerPropertiesButton">
           <property name="enabled">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
           <property name="text">
            <string>...</string>
@@ -488,6 +510,23 @@
           <property name="icon">
            <iconset resource="main_window.qrc">
             <normaloff>:/MainWindow/resources/property-blue.png</normaloff>:/MainWindow/resources/property-blue.png</iconset>
+          </property>
+          <property name="autoRaise">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QToolButton" name="mergeLayersButton">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="main_window.qrc">
+            <normaloff>:/MainWindow/resources/layers-group.png</normaloff>:/MainWindow/resources/layers-group.png</iconset>
           </property>
           <property name="autoRaise">
            <bool>true</bool>
@@ -663,10 +702,10 @@
     <bool>true</bool>
    </property>
    <property name="checked">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="enabled">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="text">
     <string>Tiles</string>
@@ -680,7 +719,7 @@
     <bool>true</bool>
    </property>
    <property name="enabled">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="text">
     <string>Control Points</string>
@@ -693,6 +732,9 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Start Points</string>
    </property>
@@ -703,6 +745,9 @@
   <action name="actionPattern">
    <property name="checkable">
     <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
    </property>
    <property name="text">
     <string>Pattern</string>
@@ -953,6 +998,32 @@
    </property>
    <property name="text">
     <string>Layers</string>
+   </property>
+  </action>
+  <action name="actionMergeLayerWithPrevious">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="main_window.qrc">
+     <normaloff>:/MainWindow/resources/layers-group.png</normaloff>:/MainWindow/resources/layers-group.png</iconset>
+   </property>
+   <property name="text">
+    <string>Merge With Previous</string>
+   </property>
+  </action>
+  <action name="actionPit">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Pit</string>
+   </property>
+   <property name="shortcut">
+    <string>F5</string>
    </property>
   </action>
  </widget>

@@ -349,6 +349,16 @@ namespace scene
         }
     }
 
+    void Scene::define_pit(core::IntRect pit)
+    {
+        track_.define_pit(pit);
+    }
+
+    void Scene::undefine_pit()
+    {
+        track_.undefine_pit();
+    }
+
     void draw(const Scene& scene, sf::RenderTarget& render_target, sf::RenderStates render_states)
     {
         scene.draw(render_target, render_states);

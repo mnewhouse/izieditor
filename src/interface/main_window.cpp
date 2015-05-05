@@ -35,6 +35,7 @@
 #include <qfiledialog.h>
 #include <qlayout.h>
 #include <qmessagebox.h>
+#include <qevent.h>
 
 #include <memory>
 
@@ -48,6 +49,7 @@ namespace interface
         ui_.newLayerButton->setDefaultAction(ui_.actionNew_Layer);
         ui_.deleteLayerButton->setDefaultAction(ui_.actionDelete_Layer);
         ui_.layerPropertiesButton->setDefaultAction(ui_.actionLayer_Properties);
+        ui_.mergeLayersButton->setDefaultAction(ui_.actionMergeLayerWithPrevious);
 
         ui_.history_undoButton->setDefaultAction(ui_.actionUndo);
         ui_.history_redoButton->setDefaultAction(ui_.actionRedo);
@@ -126,12 +128,15 @@ namespace interface
         connect(ui_.actionControl_Points, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_control_points_mode()));
         connect(ui_.actionStart_Points, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_start_points_mode()));
         connect(ui_.actionPattern, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_pattern_mode()));
+        connect(ui_.actionPit, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_pit_mode()));
 
         connect(ui_.editorCanvas, SIGNAL(tool_changed(EditorTool)), this, SLOT(tool_changed(EditorTool)));
         connect(ui_.editorCanvas, SIGNAL(mode_changed(EditorMode)), this, SLOT(mode_changed(EditorMode)));
 
         connect(ui_.editorCanvas, SIGNAL(tool_enabled(EditorTool)), this, SLOT(tool_enabled(EditorTool)));
         connect(ui_.editorCanvas, SIGNAL(tool_disabled(EditorTool)), this, SLOT(tool_disabled(EditorTool)));
+
+        connect(ui_.editorCanvas, SIGNAL(clear_tool_info()), this, SLOT(clear_tool_info()));
 
         connect(ui_.editorCanvas, SIGNAL(selection_area_changed(core::IntRect)),
             this, SLOT(selection_area_changed(core::IntRect)));
@@ -198,6 +203,12 @@ namespace interface
         connect(ui_.editorCanvas, SIGNAL(layer_selected(std::size_t)), this, SLOT(layer_selected(std::size_t)));
         connect(ui_.editorCanvas, SIGNAL(layer_deselected()), this, SLOT(layer_deselected()));
 
+        connect(ui_.editorCanvas, SIGNAL(layer_merging_enabled(bool)),
+            ui_.actionMergeLayerWithPrevious, SLOT(setEnabled(bool)));
+
+        connect(ui_.actionMergeLayerWithPrevious, SIGNAL(triggered()),
+            ui_.editorCanvas, SLOT(merge_selected_layer_with_previous()));
+
         connect(ui_.actionLayer_Properties, SIGNAL(triggered()), this, SLOT(show_layer_properties()));
 
         connect(layer_properties_dialog_, SIGNAL(rename_layer(std::size_t, const std::string&)),
@@ -216,8 +227,15 @@ namespace interface
         connect(fill_dialog_, SIGNAL(fill_area(const FillProperties&)),
             ui_.editorCanvas, SLOT(fill_area(const FillProperties&)));
 
+        connect(ui_.editorCanvas, SIGNAL(pit_defined(core::IntRect)),
+            this, SLOT(pit_defined(core::IntRect)));
+
+        connect(ui_.editorCanvas, SIGNAL(pit_undefined()), this, SLOT(pit_undefined()));
+
         connect(ui_.editorCanvas, SIGNAL(perform_action(const Action&)),
             ui_.actionHistoryList, SLOT(push_action(const Action&)));
+
+        connect(ui_.editorCanvas, SIGNAL(perform_action(const Action&)), this, SLOT(action_performed()));
 
         connect(ui_.actionUndo, SIGNAL(triggered()), ui_.actionHistoryList, SLOT(undo()));
         connect(ui_.actionRedo, SIGNAL(triggered()), ui_.actionHistoryList, SLOT(redo()));
@@ -245,9 +263,11 @@ namespace interface
 
     void MainWindow::save_track()
     {
+        saved_ = true;
+
         try
         {
-            components::save_track(ui_.editorCanvas->track());
+            components::save_track(ui_.editorCanvas->track());            
         }
         
         catch (const std::exception& e)
@@ -262,6 +282,17 @@ namespace interface
         
         ui_.editorCanvas->set_active_mode(EditorMode::Tiles);
         ui_.editorCanvas->set_active_tool(EditorTool::Placement);
+
+        ui_.menuLayer->setEnabled(true);
+        ui_.menuEdit->setEnabled(true);
+        ui_.menuMode->setEnabled(true);
+        ui_.menuView->setEnabled(true);
+
+        ui_.actionPit->setEnabled(true);
+        ui_.actionTiles->setEnabled(true);
+        ui_.actionPattern->setEnabled(true);
+        ui_.actionControl_Points->setEnabled(true);
+        ui_.actionStart_Points->setEnabled(true);
 
         ui_.actionPlacement->setEnabled(true);
         ui_.actionSingleSelectionTool->setEnabled(true);
@@ -280,9 +311,32 @@ namespace interface
         ui_.actionNew_Layer->setEnabled(true);
         ui_.actionDelete_Layer->setEnabled(false);
         ui_.actionLayer_Properties->setEnabled(false);
+        ui_.actionMergeLayerWithPrevious->setEnabled(false);
 
         ui_.actionHistoryView->setEnabled(true);
         ui_.actionLayerView->setEnabled(true);
+        saved_ = true;
+    }
+
+    void MainWindow::closeEvent(QCloseEvent* event)
+    {
+        if (!saved_)
+        {
+            auto result = QMessageBox::question(this, "Exit", "Do you want to save the track before exiting?",
+                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
+            if (result == QMessageBox::Cancel)
+            {
+                event->ignore();
+            }
+
+            if (result == QMessageBox::Yes)
+            {
+                ui_.actionSave->trigger();
+            }
+        }
+
+        event->accept();
     }
 
     void MainWindow::tool_enabled(EditorTool tool)
@@ -310,6 +364,7 @@ namespace interface
             ui_.actionTiles,
             ui_.actionControl_Points,
             ui_.actionStart_Points,
+            ui_.actionPit,
             ui_.actionPattern
         };
 
@@ -336,6 +391,8 @@ namespace interface
             return ui_.actionControl_Points;
         case EditorMode::StartPoints:
             return ui_.actionStart_Points;
+        case EditorMode::Pit:
+            return ui_.actionPit;
         case EditorMode::Pattern:
             return ui_.actionPattern;
         }
@@ -362,11 +419,14 @@ namespace interface
         return nullptr;
     }
 
-    void MainWindow::tool_changed(EditorTool tool)
+    void MainWindow::clear_tool_info()
     {
         tool_info_label_->setText({});
         secondary_tool_info_label_->setText({});
+    }
 
+    void MainWindow::tool_changed(EditorTool tool)
+    {
         ui_.actionFill_Area->setEnabled(tool == EditorTool::Placement &&
             ui_.editorCanvas->active_mode() == EditorMode::Tiles);
 
@@ -473,6 +533,11 @@ namespace interface
     void MainWindow::disable_pasting()
     {
         ui_.actionPaste->setEnabled(false);
+    }
+
+    void MainWindow::action_performed()
+    {
+        saved_ = false;
     }
 
     void MainWindow::enable_undo()
@@ -603,6 +668,28 @@ namespace interface
     void MainWindow::tiles_rotation_finished()
     {
         tool_info_label_->setText({});
+        secondary_tool_info_label_->setText({});
+    }
+    
+    void MainWindow::pit_defined(core::IntRect pit)
+    {
+        QString text = "Pit defined from (";
+        text += QString::number(pit.left);
+        text += ", ";
+        text += QString::number(pit.top);
+        text += ") to (";
+        text += QString::number(pit.right());
+        text += ", ";
+        text += QString::number(pit.bottom());
+        text += ").";
+
+        tool_info_label_->setText(text);
+        secondary_tool_info_label_->setText({});
+    }
+
+    void MainWindow::pit_undefined()
+    {
+        tool_info_label_->setText("No pit defined.");
         secondary_tool_info_label_->setText({});
     }
 

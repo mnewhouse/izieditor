@@ -42,14 +42,21 @@ namespace interface
         NewTrackDialog(QWidget* parent = nullptr);
         virtual ~NewTrackDialog() = default;
 
+        virtual void showEvent(QShowEvent*) override;
+
     private slots:
         void browse_locations();
         void confirm_track_creation();
         void cancel_track_creation();
         void validate_track_name(const QString& text);
 
+        void remove_asset();
+        void add_asset();
+
+        
+
     signals:
-        void create_track(const TrackEssentials& essentials);        
+        void create_track(const TrackEssentials& essentials);    
 
     private:
         Ui::NewTrack widgets_;

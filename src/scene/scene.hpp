@@ -79,6 +79,9 @@ namespace scene
         void append_start_point(const components::StartPoint& point);
         void delete_last_start_point();
 
+        void define_pit(core::IntRect rect);
+        void undefine_pit();
+
         const components::Track& track() const;
         const components::TileLibrary& tile_library() const;
 

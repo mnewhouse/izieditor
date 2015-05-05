@@ -46,6 +46,8 @@ namespace interface
         void set_max_stack_size(std::size_t max_size);
         std::size_t max_stack_size() const;
 
+        bool has_performed_any_actions() const;
+
     public slots:
         void undo(std::size_t num_actions = 1);
         void redo(std::size_t num_actions = 1);

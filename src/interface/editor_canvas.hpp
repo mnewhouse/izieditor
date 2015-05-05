@@ -55,6 +55,7 @@ namespace interface
         Tiles,
         ControlPoints,
         StartPoints,
+        Pit,
         Pattern
     };
 
@@ -148,6 +149,7 @@ namespace interface
         void activate_control_points_mode();
         void activate_start_points_mode();
         void activate_pattern_mode();
+        void activate_pit_mode();
 
         void set_active_tool(EditorTool tool);
         void set_active_mode(EditorMode mode);
@@ -175,6 +177,8 @@ namespace interface
         void select_layer(std::size_t layer_id);
         void deselect_layer();
 
+        void merge_selected_layer_with_previous();
+
         void fill_area(const FillProperties& properties);
         void resize_track(std::int32_t, std::int32_t height,
             HorizontalAnchor horizontal_anchor, VerticalAnchor vertical_anchor);
@@ -189,6 +193,8 @@ namespace interface
 
         void tool_enabled(EditorTool tool);
         void tool_disabled(EditorTool tool);
+
+        void clear_tool_info();
 
         void mouse_move(const QPoint&);
 
@@ -210,19 +216,22 @@ namespace interface
         void clipboard_filled();
         void clipboard_emptied();
 
+        void pit_defined(core::IntRect pit);
+        void pit_undefined();
+
         void layer_created(std::size_t layer_id, std::size_t index);
         void layer_deleted(std::size_t layer_id);
 
         void layer_selected(std::size_t layer_id);
         void layer_deselected();
 
+        void layer_merging_enabled(bool enabled);
+
         void layer_moved(std::size_t layer_id, std::size_t new_index);
         void layer_renamed(std::size_t layer_id, const std::string& new_name);
         void layer_level_changed(std::size_t layer_id, std::size_t new_level);
 
     private:
-        void recalculate_view();
-
         struct Impl;
         std::unique_ptr<Impl> impl_;
     };

@@ -164,4 +164,9 @@ namespace interface
 
         actions_.clear();
     }
+
+    bool ActionHistoryList::has_performed_any_actions() const
+    {
+        return current_index_ != 0;
+    }
 };

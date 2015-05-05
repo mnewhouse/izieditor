@@ -288,6 +288,27 @@ namespace components
                     track_.set_pattern(pattern_file);
                 }
             }
+
+            else if (directive == "maker")
+            {
+                auto& author = params[0];
+
+                if (std::getline(line_stream, author))
+                {
+                    boost::trim(author);
+
+                    track_.set_author(author);
+                }
+            }
+
+            else if (directive == "pit")
+            {
+                core::IntRect pit;
+                if (line_stream >> pit.left >> pit.top >> pit.width >> pit.height)
+                {
+                    track_.define_pit(pit);
+                }
+            }
         }
     }
 
