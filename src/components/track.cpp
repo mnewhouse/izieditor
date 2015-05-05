@@ -365,10 +365,10 @@ namespace components
             const auto& finish_line = control_points().front();
             if (finish_line.direction == ControlPoint::Horizontal)
             {
-                return Rotation<double>::degrees(0.0);
+                return Rotation<double>::degrees(90.0);
             }
 
-            return Rotation<double>::degrees(90.0);
+            return Rotation<double>::degrees(0.0);
         }
 
         return Rotation<double>::degrees(0.0);

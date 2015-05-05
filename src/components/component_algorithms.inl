@@ -104,7 +104,7 @@ void components::generate_default_start_points(const ControlPoint& finish_line, 
 
     const double grid_spacing = 12.0;
 
-    core::Vector2<double> grid_direction = core::transform_point({ 0.0, 1.0 }, sin, cos);
+    core::Vector2<double> grid_direction = core::transform_point({ -1.0, 0.0 }, sin, cos);
     core::Vector2<double> lateral_offset(grid_direction.y, -grid_direction.x);
     lateral_offset *= grid_spacing;
 
@@ -112,7 +112,7 @@ void components::generate_default_start_points(const ControlPoint& finish_line, 
     core::Vector2<double> right_column_start = center + lateral_offset + grid_direction * (3.0 + grid_spacing * 2.0);
 
     StartPoint start_point;
-    start_point.level = 0;
+    start_point.rotation = direction;
 
     core::Vector2<double> offset{};
 

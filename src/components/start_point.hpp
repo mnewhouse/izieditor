@@ -31,7 +31,6 @@ namespace components
     {
         core::Vector2<double> position;
         core::Rotation<double> rotation;
-        std::size_t level;
     };
 }
 #endif

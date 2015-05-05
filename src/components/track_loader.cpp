@@ -412,8 +412,6 @@ namespace components
             {
                 start_point.rotation = Rotation<double>::degrees(degrees);
 
-                if (!(line_stream_ >> start_point.level)) start_point.level = 0;
-
                 track_.append_start_point(start_point);
             }
         }

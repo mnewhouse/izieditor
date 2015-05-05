@@ -509,8 +509,8 @@ namespace interface
                 (view_port.top - (screen_position.y - 1.0f) * 0.5f * view_port.height) * screen_height
             };
 
-            position.x = std::floor(position.x);
-            position.y = std::floor(position.y);
+            position.x = std::floor(position.x) + 2.0f;
+            position.y = std::floor(position.y) + 2.0f;
 
             std::string text = index == 0 ? "Finish" : std::to_string(index);
             graphics::generate_text_vertices(text, font_bitmap,
@@ -605,8 +605,8 @@ namespace interface
                 (view_port.top - (screen_position.y - 1.0f) * 0.5f * view_port.height) * screen_height
             };
 
-            position.x = std::floor(position.x);
-            position.y = std::floor(position.y);
+            position.x = std::floor(position.x) + 2.0f;
+            position.y = std::floor(position.y) + 2.0f;
 
             graphics::generate_text_vertices(std::to_string(index + 1), font_bitmap,
                                              std::back_inserter(vertex_cache_), position, sf::Color(255, 255, 100));            
@@ -2273,7 +2273,7 @@ namespace interface
 
             if (fix_rotation)
             {
-                double degrees = std::round(point.rotation.degrees() / 45.0) * 45.0;
+                double degrees = std::round(point.rotation.degrees() / 22.5) * 22.5;
                 point.rotation = core::Rotation<double>::degrees(degrees);
             }
 
