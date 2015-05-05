@@ -33,6 +33,8 @@
 
 #include "core/transform.hpp"
 
+#include <boost/optional.hpp>
+
 namespace components
 {
     struct Track::TrackFeatures
@@ -46,6 +48,8 @@ namespace components
         std::vector<ConstLayerHandle> layer_order_;
 
         std::vector<StartPoint> start_points_;
+        boost::optional<core::Rotation<double>> start_direction_override_;
+
         std::vector<ControlPoint> control_points_;
 
         TerrainLibrary terrain_library_;
@@ -338,5 +342,35 @@ namespace components
     void Track::append_start_point(const StartPoint& start_point)
     {
         track_features_->start_points_.push_back(start_point);
+    }
+
+    void Track::delete_last_start_point()
+    {
+        auto& start_points = track_features_->start_points_;
+        if (!start_points.empty())
+        {
+            track_features_->start_points_.pop_back();
+        }
+    }
+
+    core::Rotation<double> Track::start_direction() const
+    {
+        if (track_features_->start_direction_override_)
+        {
+            return *track_features_->start_direction_override_;
+        }
+
+        if (!control_points().empty())
+        {
+            const auto& finish_line = control_points().front();
+            if (finish_line.direction == ControlPoint::Horizontal)
+            {
+                return Rotation<double>::degrees(0.0);
+            }
+
+            return Rotation<double>::degrees(90.0);
+        }
+
+        return Rotation<double>::degrees(0.0);
     }
 }

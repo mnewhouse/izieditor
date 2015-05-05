@@ -135,6 +135,9 @@ namespace interface
 
         connect(ui_.editorCanvas, SIGNAL(selection_area_changed(core::IntRect)),
             this, SLOT(selection_area_changed(core::IntRect)));
+        
+        connect(ui_.editorCanvas, SIGNAL(area_selected(core::IntRect)), 
+                this, SLOT(area_selected(core::IntRect)));
 
         connect(ui_.editorCanvas, SIGNAL(tile_selection_changed(std::size_t)),
             this, SLOT(tile_selection_changed(std::size_t)));
@@ -538,6 +541,8 @@ namespace interface
         text += L'°';
 
         secondary_tool_info_label_->setText(text);
+
+        fill_dialog_->set_fill_rotation(rotation);
     }
 
     void MainWindow::selection_area_changed(core::IntRect area)
@@ -563,6 +568,11 @@ namespace interface
         }
 
         secondary_tool_info_label_->setText({});
+    }
+
+    void MainWindow::area_selected(core::IntRect area)
+    {
+        fill_dialog_->set_selection_fill_enabled(area.width != 0 && area.height != 0);
     }
 
     void MainWindow::tiles_moved(core::Vector2i offset)

@@ -38,6 +38,7 @@
 #include "components/tile_group_expansion.hpp"
 #include "components/component_algorithms.hpp"
 #include "components/control_point.hpp"
+#include "components/start_point.hpp"
 
 #include <qevent.h>
 #include <qapplication.h>
@@ -183,6 +184,8 @@ namespace interface
         void wheel_event(QWheelEvent* wheel_event);
 
         void place_tile();
+        void place_tile_before();
+
         void rotate_placement_tile(std::int32_t rotation_delta, bool round = false);
 
         void goto_next_tile();
@@ -194,8 +197,10 @@ namespace interface
         void select_active_tile();
         void select_tiles(const std::map<std::size_t, components::Tile>& selection);
         void select_tile_range(std::size_t tile_index, std::size_t count);
-
+        void tile_selection_changed();
         void deselect();
+
+        
         void delete_selection();
         void delete_last_tile();
         void cut_selection();
@@ -204,6 +209,7 @@ namespace interface
 
         void move_selected_tiles(core::Vector2i offset, bool fix_position = false);
         void commit_tile_movement();
+        
 
         void rotate_selected_tiles(core::Rotation<double> delta_rotation, bool fix_rotation = false);
         void commit_tile_rotation();
@@ -212,6 +218,7 @@ namespace interface
     private:
         virtual void on_initialize(scene::Scene* scene) override;
         virtual void on_activate() override;
+        virtual std::uint32_t enabled_tools() const override;
 
         void initialize_tile_placement();
         void initialize_tile_selection();
@@ -220,6 +227,7 @@ namespace interface
         void update_tile_placement();
 
         void rebuild_tile_selection_display();
+        std::size_t acquire_level_layer(std::size_t level);
 
         TilePlacementTool tile_placement_;
         TileSelectionTool tile_selection_;
@@ -241,10 +249,44 @@ namespace interface
 
         void delete_last_control_point();
 
+        void mouse_press_event(QMouseEvent* event);
+
         virtual void tool_changed(EditorTool tool) override;
 
     private:
         virtual std::uint32_t enabled_tools() const override;
+        virtual void on_activate() override;
+
+        void place_control_point(core::Vector2i start, core::Vector2i end);
+
+        boost::optional<core::Vector2i> control_point_start_;
+        std::vector<sf::Vertex> vertex_cache_;
+    };
+
+    struct StartPointsMode
+        : ModeBase
+    {
+        StartPointsMode(EditorCanvas* canvas)
+            : ModeBase(canvas)
+        {
+        }
+
+        void render(sf::RenderTarget& render_target, sf::RenderStates render_states,
+                    const graphics::FontBitmap& font_bitmap);
+
+        void mouse_press_event(QMouseEvent* event);
+        void place_start_point(core::Vector2i position, core::Vector2i face_towards, bool fix_rotation);
+        void delete_last_start_point();
+
+        virtual void tool_changed(EditorTool tool) override;
+
+    private:
+        virtual std::uint32_t enabled_tools() const override;
+        virtual void on_activate() override;
+
+        boost::optional<core::Vector2i> start_point_position_;
+        std::vector<components::StartPoint> start_points_;
+        std::vector<sf::Vertex> vertex_cache_;
     };
 
     struct EditorCanvas::Impl
@@ -253,7 +295,8 @@ namespace interface
             : self_(self),
               font_bitmap_(graphics::default_font_data, graphics::default_font_data_size),
               tiles_mode_(self),
-              control_points_mode_(self)
+              control_points_mode_(self),
+              start_points_mode_(self)
         {
         }
 
@@ -274,6 +317,7 @@ namespace interface
 
         TilesMode tiles_mode_;
         ControlPointsMode control_points_mode_;
+        StartPointsMode start_points_mode_;
 
         AreaSelectionTool area_selection_;
         components::ConstLayerHandle selected_layer_;
@@ -287,6 +331,7 @@ namespace interface
 
         void expand_area_selection(core::Vector2i position);
         void commit_area_selection();
+        void select_area(core::IntRect rect);
 
         void select_layer(std::size_t layer_id);
         void select_layer(components::ConstLayerHandle layer);
@@ -330,8 +375,8 @@ namespace interface
 
     std::uint32_t ModeBase::enabled_tools() const
     {
-        return EditorTool::Placement | EditorTool::Movement | EditorTool::Rotation |
-            EditorTool::TileSelection | EditorTool::AreaSelection;
+        return EditorTool::Placement | EditorTool::TileSelection | EditorTool::AreaSelection |
+            EditorTool::Movement | EditorTool::Rotation;
     }
 
     void ModeBase::deactivate()
@@ -381,39 +426,36 @@ namespace interface
     void TilesMode::render(sf::RenderTarget& render_target, sf::RenderStates render_states)
     {
         auto tool = canvas()->active_tool();
-        if (tool == EditorTool::TileSelection || tool == EditorTool::Movement || tool == EditorTool::Rotation)
+        auto selection_states = render_states;
+
+        if (tool == EditorTool::Movement)
         {
-            auto selection_states = render_states;
+            auto offset = movement_.fixed_offset_;
+            selection_states.transform.translate(offset.x, offset.y);
+        }
 
-            if (tool == EditorTool::Movement)
-            {
-                auto offset = movement_.fixed_offset_;
-                selection_states.transform.translate(offset.x, offset.y);
-            }
+        else if (tool == EditorTool::Rotation)
+        {
+            auto origin = rotation_.origin_;
+            auto rotation = rotation_.fixed_rotation_;
 
-            else if (tool == EditorTool::Rotation)
-            {
-                auto origin = rotation_.origin_;
-                auto rotation = rotation_.fixed_rotation_;
+            sf::Transformable transformable;
+            transformable.setOrigin(origin.x, origin.y);
+            transformable.setRotation(rotation.degrees());
+            transformable.setPosition(origin.x, origin.y);
 
-                sf::Transformable transformable;
-                transformable.setOrigin(origin.x, origin.y);
-                transformable.setRotation(rotation.degrees());
-                transformable.setPosition(origin.x, origin.y);
+            selection_states.transform *= transformable.getTransform();
+        }
 
-                selection_states.transform *= transformable.getTransform();
-            }
+        selection_states.shader = &tile_selection_.selection_shader_;
+        tile_selection_.selection_shader_.setParameter("color", selected_tile_color);
 
-            selection_states.shader = &tile_selection_.selection_shader_;
-            tile_selection_.selection_shader_.setParameter("color", selected_tile_color);
+        scene::draw(tile_selection_.display_layer_, render_target, selection_states);
+        tile_selection_.selection_shader_.setParameter("color", selected_tile_hover_color);
 
-            scene::draw(tile_selection_.display_layer_, render_target, selection_states);
-            tile_selection_.selection_shader_.setParameter("color", selected_tile_hover_color);
-
-            if (tool == EditorTool::TileSelection)
-            {
-                scene::draw(tile_selection_.hover_layer_, render_target, selection_states);
-            }
+        if (tool == EditorTool::TileSelection)
+        {
+            scene::draw(tile_selection_.hover_layer_, render_target, selection_states);
         }
 
         if (tool == EditorTool::Placement)
@@ -429,45 +471,164 @@ namespace interface
     void ControlPointsMode::render(sf::RenderTarget& render_target, sf::RenderStates render_states,
         const graphics::FontBitmap& font_bitmap)
     {
-        std::vector<sf::Vertex> vertices;
-
         sf::RectangleShape shape;
         shape.setFillColor(sf::Color(0, 255, 255));
 
         float inverse_zoom = 1.0f / canvas()->zoom_level();
 
         const auto& control_points = scene()->track().control_points();
-        for (std::size_t index = 0; index != control_points.size(); ++index)
+        for (const auto& point : control_points)
         {
-            const auto& point = control_points[index];
             shape.setPosition(point.start.x, point.start.y);
 
             sf::Vector2f size(point.length, inverse_zoom);
             if (point.direction == components::ControlPoint::Vertical) std::swap(size.x, size.y);
             shape.setSize(size);
 
-            vertices.clear();
-            graphics::generate_text_vertices(std::to_string(index + 1), font_bitmap,
-                std::back_inserter(vertices));
-
-            sf::RenderStates text_states;
-            text_states.transform.translate(point.start.x, point.start.y);
-            text_states.transform.scale(inverse_zoom, inverse_zoom);
-            text_states.texture = &font_bitmap.texture();
-
-            render_target.draw(vertices.data(), vertices.size(), sf::Quads, text_states);
             render_target.draw(shape);
         }
+
+        sf::View track_view = render_target.getView();
+        sf::FloatRect view_port = track_view.getViewport();
+        sf::Transform view_transform = render_target.getView().getTransform();
+
+        sf::Vector2u screen_size = render_target.getSize();
+        float screen_width = static_cast<float>(screen_size.x);
+        float screen_height = static_cast<float>(screen_size.y);
+
+        vertex_cache_.clear();
+        for (std::size_t index = 0; index != control_points.size(); ++index)
+        {
+            const auto& point = control_points[index];
+
+            sf::Vector2f screen_position = view_transform.transformPoint(point.start.x, point.start.y);
+
+            sf::Vector2f position =
+            {
+                (view_port.left + (screen_position.x + 1.0f) * 0.5f * view_port.width) * screen_width,
+                (view_port.top - (screen_position.y - 1.0f) * 0.5f * view_port.height) * screen_height
+            };
+
+            position.x = std::floor(position.x);
+            position.y = std::floor(position.y);
+
+            std::string text = index == 0 ? "Finish" : std::to_string(index);
+            graphics::generate_text_vertices(text, font_bitmap,
+                                             std::back_inserter(vertex_cache_), position, sf::Color(255, 255, 100));
+        }
+
+         sf::View replacement_view(sf::FloatRect(0.0f, 0.0f, screen_width, screen_height));
+        render_target.setView(replacement_view);
+
+        render_states = sf::RenderStates(&font_bitmap.texture());
+        render_target.draw(vertex_cache_.data(), vertex_cache_.size(), sf::Quads, render_states);
+
+        render_target.setView(track_view);
+    }
+
+    void ControlPointsMode::on_activate()
+    {
+        canvas()->set_active_tool(EditorTool::Placement);
     }
 
     void ControlPointsMode::tool_changed(EditorTool tool)
     {
-
+        control_point_start_ = boost::none;
     }
 
     std::uint32_t ControlPointsMode::enabled_tools() const
     {
         return EditorTool::Placement | EditorTool::AreaSelection;
+    }
+
+    void StartPointsMode::on_activate()
+    {
+        canvas()->set_active_tool(EditorTool::Placement);
+    }
+
+    void StartPointsMode::render(sf::RenderTarget& render_target, sf::RenderStates render_states,
+                                 const graphics::FontBitmap& font_bitmap)
+    {
+        const auto& track = scene()->track();
+
+        const auto& control_points = track.control_points();
+        start_points_ = scene()->track().start_points();
+
+        if (start_points_.empty() && !control_points.empty())
+        {
+            components::generate_default_start_points(control_points.front(), track.start_direction(), 20, std::back_inserter(start_points_));
+        }
+
+        float inverse_zoom = 1.0 / canvas()->zoom_level();
+
+        sf::RectangleShape line_shape;
+        line_shape.setSize(sf::Vector2f(inverse_zoom * 24.0f, inverse_zoom));
+        line_shape.setFillColor(sf::Color(0, 255, 255));
+
+        const float point_radius = 2.0f * inverse_zoom;
+        sf::CircleShape point_shape(point_radius);
+        point_shape.setFillColor(sf::Color(0, 255, 255));
+        
+        const sf::FloatRect point_bounds = point_shape.getLocalBounds();
+        point_shape.setOrigin(point_bounds.width * 0.5f, point_bounds.height * 0.5f);
+
+        std::vector<sf::Vertex> vertices;
+
+        for (const auto& point : start_points_)
+        {
+            line_shape.setRotation(point.rotation.degrees());
+            line_shape.setPosition(point.position.x, point.position.y);
+            point_shape.setPosition(point.position.x, point.position.y);
+
+            render_target.draw(line_shape, render_states);
+            render_target.draw(point_shape, render_states);
+        }
+
+        sf::View track_view = render_target.getView();
+        sf::FloatRect view_port = track_view.getViewport();
+        sf::Transform view_transform = render_target.getView().getTransform();
+
+        sf::Vector2u screen_size = render_target.getSize();
+        float screen_width = static_cast<float>(screen_size.x);
+        float screen_height = static_cast<float>(screen_size.y);
+
+        vertex_cache_.clear();
+        for (std::size_t index = 0; index != start_points_.size(); ++index)
+        {
+            const auto& point = start_points_[index];
+
+            sf::Vector2f screen_position = view_transform.transformPoint(point.position.x, point.position.y);
+            
+            sf::Vector2f position =
+            {
+                (view_port.left + (screen_position.x + 1.0f) * 0.5f * view_port.width) * screen_width,
+                (view_port.top - (screen_position.y - 1.0f) * 0.5f * view_port.height) * screen_height
+            };
+
+            position.x = std::floor(position.x);
+            position.y = std::floor(position.y);
+
+            graphics::generate_text_vertices(std::to_string(index + 1), font_bitmap,
+                                             std::back_inserter(vertex_cache_), position, sf::Color(255, 255, 100));            
+        }
+
+        sf::View replacement_view(sf::FloatRect(0.0f, 0.0f, screen_width, screen_height));
+        render_target.setView(replacement_view);
+
+        render_states = sf::RenderStates(&font_bitmap.texture());
+        render_target.draw(vertex_cache_.data(), vertex_cache_.size(), sf::Quads, render_states);
+
+        render_target.setView(track_view);
+    }
+
+    std::uint32_t StartPointsMode::enabled_tools() const
+    {
+        return EditorTool::Placement | EditorTool::AreaSelection | EditorTool::TileSelection;
+    }
+
+    void StartPointsMode::tool_changed(EditorTool tool)
+    {
+        start_point_position_ = boost::none;
     }
 
     void EditorCanvas::onRender()
@@ -498,9 +659,14 @@ namespace interface
                 impl_->tiles_mode_.render(*this, render_states);
             }
 
-            if (active_mode() == EditorMode::ControlPoints)
+            else if (mode == EditorMode::ControlPoints)
             {
                 impl_->control_points_mode_.render(*this, render_states, impl_->font_bitmap_);
+            }
+
+            else if (mode == EditorMode::StartPoints)
+            {
+                impl_->start_points_mode_.render(*this, render_states, impl_->font_bitmap_);
             }
 
             auto rect = impl_->area_selection_.selection_rect_;
@@ -544,11 +710,10 @@ namespace interface
         scene::Scene* scene_ptr = impl_->scene_.get();
         impl_->tiles_mode_.initialize(scene_ptr);
         impl_->control_points_mode_.initialize(scene_ptr);
+        impl_->start_points_mode_.initialize(scene_ptr);
 
         set_active_mode(EditorMode::None);
         set_active_tool(EditorTool::None);        
-
-        scene_loaded(impl_->scene_.get());   
 
         impl_->selected_layer_ = {};
         layer_deselected();
@@ -557,7 +722,11 @@ namespace interface
         {
             impl_->selected_layer_ = impl_->scene_->track().layers().front();
             layer_selected(impl_->selected_layer_.id());
-        }      
+        }
+
+        impl_->select_area({});
+
+        scene_loaded(impl_->scene_.get());
 
         show();        
     }
@@ -697,6 +866,11 @@ namespace interface
                 tile_placement_.fixed_position_ = canvas()->mouse_position();
             }
 
+            else if (event->key() == Qt::Key_Space)
+            {
+                place_tile_before();
+            }
+
             switch (event->key())
             {
             case Qt::Key_0:
@@ -780,9 +954,20 @@ namespace interface
 
     void EditorCanvas::mousePressEvent(QMouseEvent* event)
     {
-        if (active_mode() == EditorMode::Tiles)
+        auto mode = active_mode();
+        if (mode == EditorMode::Tiles)
         {
             impl_->tiles_mode_.mouse_press_event(event);
+        }
+
+        else if (mode == EditorMode::ControlPoints)
+        {
+            impl_->control_points_mode_.mouse_press_event(event);
+        }
+
+        else if (mode == EditorMode::StartPoints)
+        {
+            impl_->start_points_mode_.mouse_press_event(event);
         }
 
         if (active_tool() == EditorTool::AreaSelection)
@@ -1031,6 +1216,12 @@ namespace interface
         return impl_->selected_layer_;
     }
 
+    void EditorCanvas::enable_tool(EditorTool tool, bool enable)
+    {
+        if (enable) tool_enabled(tool);
+        else tool_disabled(tool);
+    }
+
     void EditorCanvas::set_active_tool(EditorTool tool)
     {
         auto old_tool = active_tool();
@@ -1047,8 +1238,7 @@ namespace interface
 
             if (tool == EditorTool::TileSelection || tool == EditorTool::Movement || tool == EditorTool::Rotation)
             {
-                impl_->area_selection_.selection_rect_ = {};
-                impl_->area_selection_.selection_origin_ = {};
+                impl_->select_area({});
             }
         }
     }
@@ -1070,6 +1260,9 @@ namespace interface
 
                     case EditorMode::ControlPoints:
                         return &impl_->control_points_mode_;
+
+                    case EditorMode::StartPoints:
+                        return &impl_->start_points_mode_;
                     }
 
                     return nullptr;
@@ -1181,6 +1374,12 @@ namespace interface
 
     void TilesMode::on_activate()
     {
+        canvas()->set_active_tool(EditorTool::Placement);
+    }
+
+    std::uint32_t TilesMode::enabled_tools() const
+    {
+        return EditorTool::Placement | EditorTool::AreaSelection | EditorTool::TileSelection;
     }
 
     void TilesMode::layer_selected(std::size_t layer)
@@ -1200,8 +1399,6 @@ namespace interface
             tile_placement_.fixed_position_ = boost::none;
             tile_placement_.rotation = {};
             tile_placement_.tile_position_ = {};
-
-            deselect();
         }
     }
 
@@ -1255,6 +1452,24 @@ namespace interface
         tile_placement_.current_tile = scene()->tile_library().first_tile_group();
     }
 
+    std::size_t TilesMode::acquire_level_layer(std::size_t level)
+    {
+        const auto& layers = scene()->track().layers();
+        auto layer_it = std::find_if(layers.begin(), layers.end(),
+                                     [level](const components::ConstLayerHandle& layer)
+        {
+            return layer->level == level;
+        });
+
+        if (layer_it != layers.end())
+        {
+            return layer_it->id();
+        }
+
+        return canvas()->create_layer("Layer " + std::to_string(level), level);
+
+    }
+
     void TilesMode::place_tile()
     {
         auto selected_layer = canvas()->selected_layer();
@@ -1265,29 +1480,67 @@ namespace interface
             tile.id = tile_placement_.current_tile->id();
             tile.rotation = core::Rotation<double>::degrees(tile_placement_.rotation);
 
-            std::size_t selected_layer_id = selected_layer.id();
+            std::size_t layer_id = selected_layer.id();
+            if (tile.id >= 5000 && selected_layer->level == 0)
+            {
+                layer_id = acquire_level_layer(2);
+            }
 
             auto command = [=]()
             {
-                canvas()->set_active_mode(EditorMode::Tiles);
-                canvas()->set_active_tool(EditorTool::Placement);
-
-                std::size_t layer_id = selected_layer_id;
-                if (tile.id >= 5000)
-                {
-                    auto layer = scene()->track().layer_by_id(layer_id);
-                    if (!layer || layer->level == 0)
-                    {
-                        layer_id = canvas()->create_layer("Level 2", 2);
-                    }
-                }
-
+                canvas()->select_layer(layer_id);
                 scene()->append_tile(layer_id, tile);
             };
 
             auto undo_command = [=]()
             {
-                scene()->delete_last_tile(selected_layer_id);
+                canvas()->select_layer(layer_id);
+                scene()->delete_last_tile(layer_id);
+            };
+
+            command();
+            canvas()->perform_action("Place tile", command, undo_command);
+        }
+    }
+
+    void TilesMode::place_tile_before()
+    {
+        auto selected_layer = canvas()->selected_layer();
+        if (selected_layer && tile_placement_.current_tile)
+        {
+            components::Tile tile;
+            tile.position = tile_placement_.tile_position_;
+            tile.id = tile_placement_.current_tile->id();
+            tile.rotation = core::Rotation<double>::degrees(tile_placement_.rotation);
+
+            std::size_t layer_id = selected_layer.id();
+            if (tile.id >= 5000 && selected_layer->level == 0)
+            {
+                layer_id = acquire_level_layer(2);
+                selected_layer = scene()->track().layer_by_id(layer_id);
+            }
+
+            std::size_t tile_index = 0;
+            if (!tile_selection_.selected_tiles_.empty())
+            {
+                tile_index = tile_selection_.selected_tiles_.begin()->first;
+            }
+
+            else if (!selected_layer->tiles.empty())
+            {
+                tile_index = selected_layer->tiles.size() - 1;
+            }
+
+            auto command = [=]()
+            {
+                canvas()->select_layer(layer_id);
+                scene()->insert_tile(layer_id, tile_index, tile);
+            };
+
+            auto undo_command = [=]()
+            {
+                canvas()->select_layer(layer_id);
+                scene()->delete_tile(layer_id, tile_index);
             };
 
             command();
@@ -1436,9 +1689,20 @@ namespace interface
             rebuild_tile_selection_display();
             compute_rotation_origin();
 
-            canvas()->tile_selection_changed(tile_selection_.selected_tiles_.size());
+            tile_selection_changed();
             canvas()->perform_action("Select tiles", command, undo_command);
         }
+    }
+
+    void TilesMode::tile_selection_changed()
+    {
+        const auto& selection = tile_selection_.selected_tiles_;
+
+        const bool enable_tools = !selection.empty();
+        canvas()->enable_tool(EditorTool::Movement, enable_tools);
+        canvas()->enable_tool(EditorTool::Rotation, enable_tools);
+
+        canvas()->tile_selection_changed(tile_selection_.selected_tiles_.size());
     }
 
     void TilesMode::select_tiles(const std::map<std::size_t, components::Tile>& selection)
@@ -1448,7 +1712,7 @@ namespace interface
         rebuild_tile_selection_display();
         compute_rotation_origin();
 
-        canvas()->tile_selection_changed(selection.size());
+        tile_selection_changed();
     }
 
     void TilesMode::select_tile_range(std::size_t tile_index, std::size_t tile_count)
@@ -1467,7 +1731,7 @@ namespace interface
             rebuild_tile_selection_display();
             compute_rotation_origin();
 
-            canvas()->tile_selection_changed(tile_selection_.selected_tiles_.size());
+            tile_selection_changed();
         }       
     }
 
@@ -1702,12 +1966,12 @@ namespace interface
 
             auto command = [=]()
             {
-                impl_->area_selection_ = {};
+                impl_->select_area({});
             };
 
             auto undo_command = [=]()
             {
-                impl_->area_selection_.selection_rect_ = old_selection;
+                impl_->select_area(old_selection);
             };
 
             command();
@@ -1763,6 +2027,15 @@ namespace interface
         self_->selection_area_changed(area_selection_.temp_selection_);
     }
 
+    void EditorCanvas::Impl::select_area(core::IntRect area)
+    {
+        area_selection_.selection_rect_ = area;
+        area_selection_.temp_selection_ = {};
+        area_selection_.selection_origin_ = {};
+
+        self_->area_selected(area);
+    }
+
     void EditorCanvas::Impl::commit_area_selection()
     {
         auto old_selection = area_selection_.selection_rect_;
@@ -1773,14 +2046,12 @@ namespace interface
             auto command = [=]()
             {
                 self_->set_active_tool(EditorTool::AreaSelection);
-                area_selection_.selection_rect_ = new_selection;
-                area_selection_.temp_selection_ = {};
+                select_area(new_selection);
             };
 
             auto undo_command = [=]()
             {
-                area_selection_.selection_rect_ = old_selection;
-                area_selection_.temp_selection_ = {};
+                select_area(new_selection);
             };
 
             command();
@@ -1899,6 +2170,68 @@ namespace interface
         }
     }
 
+    void ControlPointsMode::mouse_press_event(QMouseEvent*)
+    {
+        if (canvas()->active_tool() == EditorTool::Placement)
+        {
+            if (control_point_start_)
+            {
+                place_control_point(*control_point_start_, canvas()->mouse_position());
+                control_point_start_ = boost::none;
+            }
+
+            else
+            {
+                control_point_start_ = canvas()->mouse_position();
+            }            
+        }
+    }
+
+    void ControlPointsMode::place_control_point(core::Vector2i start, core::Vector2i end)
+    {
+        using components::ControlPoint;
+
+        if (start != end)
+        {
+            
+            std::int32_t x_diff = end.x - start.x;
+            std::int32_t y_diff = end.y - start.y;
+
+            std::int32_t x_length = std::abs(x_diff);
+            std::int32_t y_length = std::abs(y_diff);
+
+            ControlPoint point{};
+            point.start = start;
+
+            if (x_length > y_length)
+            {                
+                point.direction = ControlPoint::Horizontal;
+                point.length = x_length;
+                if (x_diff < 0) point.start.x = end.x;
+            }
+
+            else
+            {
+                point.direction = ControlPoint::Vertical;
+                point.length = y_length;
+                if (y_diff < 0) point.start.y = end.y;
+            }
+
+            auto command = [=]()
+            {
+                scene()->append_control_point(point);
+            };
+
+            auto undo_command = [=]()
+            {
+                scene()->delete_last_control_point();
+            };
+
+            command();
+            canvas()->perform_action("Add control point", command, undo_command);
+        }
+    }
+
     void ControlPointsMode::delete_last_control_point()
     {
         const auto& control_points = scene()->track().control_points();
@@ -1916,21 +2249,109 @@ namespace interface
                 scene()->append_control_point(last_point);
             };
 
+            control_point_start_ = boost::none;
+
             command();
             canvas()->perform_action("Remove control point", command, undo_command);            
         }        
     }
 
+    void StartPointsMode::place_start_point(core::Vector2i position, core::Vector2i face_towards, bool fix_rotation)
+    {
+        const auto& start_points = scene()->track().start_points();
+        if (start_points.size() < 20)
+        {
+            double x_offset = face_towards.x - static_cast<double>(position.x);
+            double y_offset = face_towards.y - static_cast<double>(position.y);
+
+            double radians = std::atan2(y_offset, x_offset);
+
+            using components::StartPoint;
+            StartPoint point{};
+            point.position = position;
+            point.rotation = core::Rotation<double>::radians(radians);
+
+            if (fix_rotation)
+            {
+                double degrees = std::round(point.rotation.degrees() / 45.0) * 45.0;
+                point.rotation = core::Rotation<double>::degrees(degrees);
+            }
+
+            auto command = [=]()
+            {
+                scene()->append_start_point(point);
+            };
+
+            auto undo_command = [=]()
+            {
+                scene()->delete_last_start_point();
+            };
+
+            command();
+            canvas()->perform_action("Add start point", command, undo_command);
+        }
+    }
+
+    void StartPointsMode::delete_last_start_point()
+    {
+        const auto& start_points = scene()->track().start_points();
+        if (!start_points.empty())
+        {
+            auto point = start_points.back();
+
+            auto command = [=]()
+            {
+                scene()->delete_last_start_point();
+            };
+
+            auto undo_command = [=]()
+            {
+                scene()->append_start_point(point);
+            };
+
+            command();
+            canvas()->perform_action("Remove start point", command, undo_command);
+        }
+    }
+
+    void StartPointsMode::mouse_press_event(QMouseEvent* event)
+    {
+        auto tool = canvas()->active_tool();
+        if (tool == EditorTool::Placement)
+        {
+            auto position = canvas()->mouse_position();
+
+            if (start_point_position_)
+            {
+                bool fix_rotation = (QApplication::queryKeyboardModifiers() & Qt::AltModifier) == 0;
+                place_start_point(*start_point_position_, position, fix_rotation);
+
+                start_point_position_ = boost::none;
+            }
+
+            else
+            {
+                start_point_position_ = position;
+            }
+        }
+    }
+
     void EditorCanvas::delete_last()
     {
-        if (active_mode() == EditorMode::Tiles)
+        auto mode = active_mode();
+        if (mode == EditorMode::Tiles)
         {
             impl_->tiles_mode_.delete_last_tile();
         }
 
-        else if (active_mode() == EditorMode::ControlPoints)
+        else if (mode == EditorMode::ControlPoints)
         {
             impl_->control_points_mode_.delete_last_control_point();
+        }
+
+        else if (mode == EditorMode::StartPoints)
+        {
+            impl_->start_points_mode_.delete_last_start_point();
         }
     }
 
@@ -2361,8 +2782,13 @@ namespace interface
                 prop.area.width = track_size.x;
                 prop.area.height = track_size.y;
             }
-            std::size_t layer_id = selected_layer.id();
             const components::TileGroupDefinition& tile_group = *tile_placement_.current_tile;
+
+            std::size_t layer_id = selected_layer.id();
+            if (tile_group.id() >= 5000 && selected_layer->level == 0)
+            {
+                layer_id = acquire_level_layer(2);
+            }
 
             std::vector<components::Tile> added_tiles = scene()->fill_area(layer_id, tile_group, prop);
             std::size_t added_tile_count = added_tiles.size();

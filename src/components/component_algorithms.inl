@@ -40,27 +40,6 @@ void components::fill_area(const TileGroupDefinition& tile_group, const TileLibr
     const FillProperties& properties, RNG&& rng, OutIt out)
 {
     auto box = tile_group_bounding_box(tile_group, tile_library);
-    
-    /*
-    // Get the bounding box of the tile group
-    core::DoubleRect box = [&]()
-    {
-        auto bb = tile_group_bounding_box(tile_group, tile_library);
-
-        if (properties.randomize_rotation)
-        {
-            double max_value = std::max({
-                std::abs(bb.left), std::abs(bb.top),
-                std::abs(bb.right()), std::abs(bb.bottom())
-            });
-
-            double size = max_value * 2.0;
-            return core::DoubleRect(-max_value, -max_value, size, size);
-        }
-
-        return core::transform_rect(core::DoubleRect(bb.left, bb.top, bb.width, bb.height), properties.rotation);
-    }();
-    */
 
     std::uniform_real_distribution<double> offset_dist(-properties.position_jitter, properties.position_jitter);
     std::uniform_real_distribution<double> rotation_dist(0.0, 359.0);
@@ -109,6 +88,48 @@ void components::fill_area(const TileGroupDefinition& tile_group, const TileLibr
                 *out = tile; ++out;
             }
         }       
+    }
+}
+
+template <typename OutIt>
+void components::generate_default_start_points(const ControlPoint& finish_line, core::Rotation<double> direction,
+                                               std::size_t num_points, OutIt out)
+{
+    double sin = std::sin(direction.radians());
+    double cos = std::cos(direction.radians());
+
+    core::Vector2<double> center = finish_line.start;
+    if (finish_line.direction == ControlPoint::Horizontal) center.x += finish_line.length * 0.5;
+    else center.y += finish_line.length * 0.5;
+
+    const double grid_spacing = 12.0;
+
+    core::Vector2<double> grid_direction = core::transform_point({ 0.0, 1.0 }, sin, cos);
+    core::Vector2<double> lateral_offset(grid_direction.y, -grid_direction.x);
+    lateral_offset *= grid_spacing;
+
+    core::Vector2<double> left_column_start = center - lateral_offset + grid_direction * (3.0 + grid_spacing);
+    core::Vector2<double> right_column_start = center + lateral_offset + grid_direction * (3.0 + grid_spacing * 2.0);
+
+    StartPoint start_point;
+    start_point.level = 0;
+
+    core::Vector2<double> offset{};
+
+    for (std::size_t i = 0; i != num_points; ++i)
+    {
+        if ((i & 1) == 0)
+        {
+            start_point.position = left_column_start + offset;
+        }
+
+        else
+        {
+            start_point.position = right_column_start + offset;
+            offset += grid_direction * grid_spacing * 2.0;
+        }
+
+        *out = start_point; ++out;        
     }
 }
 

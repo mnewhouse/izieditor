@@ -46,6 +46,9 @@ namespace interface
         ui_.posJitterSpinBox->setValue(0);
 
         connect(ui_.buttonBox, SIGNAL(accepted()), this, SLOT(dispatch_fill_signal()));
+
+        connect(ui_.randomizeRotationCheckBox, SIGNAL(stateChanged(int)),
+                this, SLOT(randomize_rotation_state_change(int)));
     }
 
     void FillDialog::dispatch_fill_signal()
@@ -64,5 +67,25 @@ namespace interface
         properties.rotation = ui_.rotationSpinBox->value();
 
         fill_area(properties);
+    }
+
+    void FillDialog::randomize_rotation_state_change(int state)
+    {
+        ui_.rotationSpinBox->setEnabled(state != Qt::Checked);
+    }
+
+    void FillDialog::set_fill_rotation(std::int32_t rotation)
+    {
+        ui_.rotationSpinBox->setValue(rotation);
+    }
+
+    void FillDialog::set_selection_fill_enabled(bool enable)
+    {
+        ui_.fillAreaComboBox->setItemData(1, enable ? Qt::ItemIsEnabled : 0, Qt::UserRole - 1);
+
+        if (!enable)
+        {
+            ui_.fillAreaComboBox->setCurrentIndex(0);
+        }
     }
 }

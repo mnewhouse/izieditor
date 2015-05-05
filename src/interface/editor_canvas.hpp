@@ -116,6 +116,7 @@ namespace interface
 
         EditorTool active_tool() const;
         EditorMode active_mode() const;
+        void enable_tool(EditorTool tool, bool enable);
 
         const scene::Scene* scene() const;
         const components::Track& track() const;
@@ -195,6 +196,7 @@ namespace interface
         void tile_selection_hover_changed(const components::Tile* tile);
 
         void selection_area_changed(core::IntRect area);
+        void area_selected(core::IntRect area);
 
         void placement_tile_changed(const components::TileGroupDefinition* tile_group_def);
         void placement_tile_rotated(std::int32_t rotation);

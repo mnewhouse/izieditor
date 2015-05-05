@@ -76,6 +76,9 @@ namespace scene
         void append_control_point(const components::ControlPoint& point);
         void delete_last_control_point();
 
+        void append_start_point(const components::StartPoint& point);
+        void delete_last_start_point();
+
         const components::Track& track() const;
         const components::TileLibrary& tile_library() const;
 

@@ -72,6 +72,7 @@ namespace interface
         void placement_tile_rotated(std::int32_t rotation);
 
         void selection_area_changed(core::IntRect area);
+        void area_selected(core::IntRect area);
 
         void tile_selection_changed(std::size_t selected_tile_count);
         void tile_selection_hover_changed(const components::Tile* tile);

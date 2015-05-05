@@ -63,7 +63,7 @@ namespace graphics
             vertex.position.y -= texture_height;
             *out = vertex; ++out;
 
-            position.x += width;
+            position.x = vertex.position.x;
         }
     }
 }

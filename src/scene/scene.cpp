@@ -255,6 +255,16 @@ namespace scene
         track_.delete_last_control_point();
     }
 
+    void Scene::append_start_point(const components::StartPoint& start_point)
+    {
+        track_.append_start_point(start_point);
+    }
+
+    void Scene::delete_last_start_point()
+    {
+        track_.delete_last_start_point();
+    }
+
     components::ConstLayerHandle Scene::create_layer(const std::string& name, std::size_t level)
     {
         return track_.create_layer(name, level);

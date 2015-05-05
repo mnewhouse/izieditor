@@ -44,11 +44,15 @@ namespace interface
     public:
         FillDialog(QWidget* parent = nullptr);
 
+        void set_fill_rotation(std::int32_t rotation);
+        void set_selection_fill_enabled(bool enable);
+
     signals:
         void fill_area(const FillProperties& properties);
 
     private slots:
-        void dispatch_fill_signal();        
+        void dispatch_fill_signal();
+        void randomize_rotation_state_change(int state);
 
     private:
         Ui::fillDialog ui_;

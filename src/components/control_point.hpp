@@ -42,7 +42,6 @@ namespace components
 
         std::uint32_t id;
         core::Vector2i start;
-        core::Vector2i end;
         std::int32_t length;
         Direction direction;
     };

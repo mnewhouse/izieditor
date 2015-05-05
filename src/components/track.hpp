@@ -27,6 +27,7 @@
 #define TRACK_HPP
 
 #include "core/vector2.hpp"
+#include "core/rotation.hpp"
 
 #include "tile_definition.hpp"
 #include "track_layer.hpp"
@@ -60,11 +61,6 @@ namespace components
     struct TerrainDefinition;
     struct SubTerrain;
 
-    // * Layers
-    // * Can be moved around, but level order must be respected
-    // * A layer's name and tile list can be modified given its layer handle,
-    //   but NOT its level.
-
     class Track
     {
     public:
@@ -90,6 +86,7 @@ namespace components
         void delete_last_control_point();
 
         void append_start_point(const StartPoint& start_point);
+        void delete_last_start_point();
 
         const std::vector<ConstLayerHandle>& layers() const;
         std::size_t layer_count() const;
@@ -112,6 +109,7 @@ namespace components
 
         const std::vector<StartPoint>& start_points() const;
         const std::vector<ControlPoint>& control_points() const;
+        core::Rotation<double> start_direction() const;
 
         void set_size(Vector2u size);
         void set_num_levels(std::size_t levels);

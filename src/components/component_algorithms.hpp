@@ -34,6 +34,9 @@
 #include "tile_library.hpp"
 #include "tile_definition.hpp"
 
+#include "start_point.hpp"
+#include "control_point.hpp"
+
 namespace components
 {
     struct FillProperties
@@ -51,6 +54,10 @@ namespace components
         const FillProperties& properties, RNG&& rng, OutIt out);
 
     core::IntRect tile_group_bounding_box(const TileGroupDefinition& tile_group, const TileLibrary& tile_library);
+
+    template <typename OutIt>
+    void generate_default_start_points(const ControlPoint& finish_line, core::Rotation<double> start_direction,
+                                       std::size_t num_points, OutIt out);
 }
 
 #include "component_algorithms.inl"
