@@ -623,7 +623,7 @@ namespace interface
 
     std::uint32_t StartPointsMode::enabled_tools() const
     {
-        return EditorTool::Placement | EditorTool::AreaSelection | EditorTool::TileSelection;
+        return EditorTool::Placement | EditorTool::AreaSelection;
     }
 
     void StartPointsMode::tool_changed(EditorTool tool)
@@ -1226,11 +1226,10 @@ namespace interface
     {
         auto old_tool = active_tool();
 
+        impl_->active_tool_ = tool;
+
         if (tool != old_tool)
         {
-            impl_->active_tool_ = tool;
-            tool_changed(tool);
-
             if (active_mode() == EditorMode::Tiles)
             {
                 impl_->tiles_mode_.tool_changed(tool);
@@ -1241,46 +1240,45 @@ namespace interface
                 impl_->select_area({});
             }
         }
+
+        tool_changed(tool);
     }
 
     void EditorCanvas::set_active_mode(EditorMode mode)
     {
-        if (impl_->scene_)
+        auto old_mode = active_mode();
+        if (old_mode != mode)
         {
-            auto old_mode = active_mode();
-            if (old_mode != mode)
+            impl_->active_mode_ = mode;
+            auto identify_mode = [=](EditorMode mode) -> ModeBase*
             {
-                impl_->active_mode_ = mode;
-                auto identify_mode = [=](EditorMode mode) -> ModeBase*
+                switch (mode)
                 {
-                    switch (mode)
-                    {
-                    case EditorMode::Tiles:
-                        return &impl_->tiles_mode_;
+                case EditorMode::Tiles:
+                    return &impl_->tiles_mode_;
 
-                    case EditorMode::ControlPoints:
-                        return &impl_->control_points_mode_;
+                case EditorMode::ControlPoints:
+                    return &impl_->control_points_mode_;
 
-                    case EditorMode::StartPoints:
-                        return &impl_->start_points_mode_;
-                    }
-
-                    return nullptr;
-                };
-
-                if (auto old_mode_object = identify_mode(old_mode))
-                {
-                    old_mode_object->deactivate();
+                case EditorMode::StartPoints:
+                    return &impl_->start_points_mode_;
                 }
 
-                if (auto new_mode_object = identify_mode(mode))
-                {
-                    new_mode_object->activate();
-                }
+                return nullptr;
+            };
 
-                mode_changed(mode);
+            if (auto old_mode_object = identify_mode(old_mode))
+            {
+                old_mode_object->deactivate();
+            }
+
+            if (auto new_mode_object = identify_mode(mode))
+            {
+                new_mode_object->activate();
             }
         }
+
+        mode_changed(mode);
     }
 
     void EditorCanvas::activate_placement_tool()
