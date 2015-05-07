@@ -30,6 +30,7 @@
 #include "tile_mapping.hpp"
 
 #include "components/track.hpp"
+#include "components/pattern_store.hpp"
 
 namespace components
 {
@@ -84,6 +85,7 @@ namespace scene
 
         const components::Track& track() const;
         const components::TileLibrary& tile_library() const;
+        const components::PatternStore& pattern_store() const;
 
         const TileMapping& tile_mapping() const;
         const DisplayLayerMap& display_layers() const;
@@ -112,13 +114,15 @@ namespace scene
 
     private:
         friend class SceneLoader;
-        Scene(components::Track&& track, TileMapping&& tile_mapping, DisplayLayerMap&& display_layer_map);
+        Scene(components::Track&& track, components::PatternStore&& pattern_loader,
+            TileMapping&& tile_mapping, DisplayLayerMap&& display_layer_map);
 
         void rebuild_tile_vertices(DisplayLayer& layer, std::size_t tile_id, const components::Tile& tile);
 
         components::Track track_;
+        components::PatternStore pattern_store_;
         TileMapping tile_mapping_;
-        DisplayLayerMap track_display_;
+        DisplayLayerMap track_display_;        
 
         std::vector<components::PlacedTile> tile_cache_;
         std::vector<sf::Vertex> vertex_cache_;

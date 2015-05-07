@@ -44,7 +44,7 @@ namespace scene
     {
         Preprocessing,
         LoadingImages,
-        LoadingPattern,
+        LoadingPatterns,
         MappingTiles,
         BuildingScene
     };

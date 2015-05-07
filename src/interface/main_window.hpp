@@ -57,6 +57,13 @@ namespace interface
         void save_track();
 
         void scene_loaded(const scene::Scene* scene_ptr);
+        void zoom_level_changed(double zoom_level);
+
+        void update_scroll_bars(core::DoubleRect visible_area);
+
+        void scroll_canvas_horizontally(int value);
+        void scroll_canvas_vertically(int value);
+
 
         void resize_track();
 
@@ -130,6 +137,7 @@ namespace interface
         QLabel* tool_info_label_ = nullptr;
         QLabel* secondary_tool_info_label_ = nullptr;
         QLabel* position_label_ = nullptr;
+        QLabel* zoom_label_ = nullptr;
 
         bool saved_ = true;
     };

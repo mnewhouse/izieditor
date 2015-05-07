@@ -128,11 +128,11 @@ namespace components
         return &tile_map_.begin()->second;
     }
 
-    const TileDefinition* TileLibrary::next_tile(const TileDefinition* current) const
+    const TileDefinition* TileLibrary::next_tile(TileId current) const
     {
         if (tile_map_.empty()) return nullptr;
 
-        auto it = tile_map_.upper_bound(current->id);
+        auto it = tile_map_.upper_bound(current);
         if (it == tile_map_.end())
         {
             return nullptr;

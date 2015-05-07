@@ -106,9 +106,17 @@ namespace components
 
     void TrackLoader::Impl::load_from_file(const std::string& file_name)
     {
-        track_ = Track();
+        track_ = Track();        
+
+        auto track_name = boost::filesystem::basename(file_name);
+        if (!track_name.empty())
+        {
+            track_name.front() = std::toupper(track_name.front(), std::locale());
+        }
 
         track_.set_path(file_name);
+        track_.set_name(track_name);
+
         working_directory_ = boost::filesystem::path(file_name).parent_path().string();
 
         include(file_name);

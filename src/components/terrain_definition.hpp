@@ -37,9 +37,9 @@ namespace components
 
     struct TerrainColor
     {
-        std::uint8_t red = 0;
-        std::uint8_t green = 0;
-        std::uint8_t blue = 0;
+        std::uint8_t red = 150;
+        std::uint8_t green = 150;
+        std::uint8_t blue = 150;
     };
 
     struct TerrainDefinition
@@ -47,18 +47,16 @@ namespace components
         TerrainId id = 0;
 
         double acceleration = 1.0;
-        double drag = 1.0;
         double steering = 1.0;
-        double traction = 1.0;
-        double antislide = 1.0;
+        double grip = 1.0;
+        double viscosity = 1.0;
         double braking = 1.0;
 
         bool tire_mark = true;
         bool skid_mark = false;
+        bool is_wall = true;
 
-        bool is_wall = false;
-        WallDefinition wall_definition;
-            
+        WallDefinition wall;            
         TerrainColor color;
     };
 

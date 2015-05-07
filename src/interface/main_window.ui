@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>794</width>
+    <width>804</width>
     <height>515</height>
    </rect>
   </property>
@@ -23,10 +23,7 @@
    <string>IziEditor</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
-    <property name="spacing">
-     <number>0</number>
-    </property>
+   <layout class="QGridLayout" name="gridLayout">
     <property name="leftMargin">
      <number>0</number>
     </property>
@@ -39,7 +36,10 @@
     <property name="bottomMargin">
      <number>0</number>
     </property>
-    <item>
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <item row="0" column="0" rowspan="2">
      <widget class="interface::EditorCanvas" name="editorCanvas" native="true">
       <property name="enabled">
        <bool>true</bool>
@@ -58,6 +58,26 @@
       </property>
      </widget>
     </item>
+    <item row="0" column="1" rowspan="2">
+     <widget class="QScrollBar" name="verticalScrollBar">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QScrollBar" name="horizontalScrollBar">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -65,7 +85,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>794</width>
+     <width>804</width>
      <height>21</height>
     </rect>
    </property>
@@ -140,6 +160,8 @@
     </property>
     <addaction name="actionNew_Layer"/>
     <addaction name="actionDelete_Layer"/>
+    <addaction name="actionLayer_Properties"/>
+    <addaction name="actionMerge_Down"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuMode"/>
@@ -301,7 +323,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="main_window.qrc">
+           <iconset>
             <normaloff>:/MainWindow/resources/arrow-return-180-left.png</normaloff>:/MainWindow/resources/arrow-return-180-left.png</iconset>
           </property>
           <property name="autoRaise">
@@ -318,7 +340,7 @@
            <bool>false</bool>
           </property>
           <property name="icon">
-           <iconset resource="main_window.qrc">
+           <iconset>
             <normaloff>:/MainWindow/resources/arrow-return.png</normaloff>:/MainWindow/resources/arrow-return.png</iconset>
           </property>
           <property name="autoRaise">
@@ -474,7 +496,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="main_window.qrc">
+           <iconset>
             <normaloff>:/MainWindow/resources/new-document.png</normaloff>:/MainWindow/resources/new-document.png</iconset>
           </property>
           <property name="autoRaise">
@@ -491,7 +513,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="main_window.qrc">
+           <iconset>
             <normaloff>:/MainWindow/resources/cross-script.png</normaloff>:/MainWindow/resources/cross-script.png</iconset>
           </property>
           <property name="autoRaise">
@@ -508,7 +530,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="main_window.qrc">
+           <iconset>
             <normaloff>:/MainWindow/resources/property-blue.png</normaloff>:/MainWindow/resources/property-blue.png</iconset>
           </property>
           <property name="autoRaise">
@@ -525,7 +547,7 @@
            <string>...</string>
           </property>
           <property name="icon">
-           <iconset resource="main_window.qrc">
+           <iconset>
             <normaloff>:/MainWindow/resources/layers-group.png</normaloff>:/MainWindow/resources/layers-group.png</iconset>
           </property>
           <property name="autoRaise">
@@ -541,8 +563,8 @@
   </widget>
   <action name="actionNew">
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/new-document.png</normaloff>:/MainWindow/resources/new-document.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/new-document.png</normaloff>:/Icons/resources/new-document.png</iconset>
    </property>
    <property name="text">
     <string>New</string>
@@ -553,8 +575,8 @@
   </action>
   <action name="actionOpen">
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/folder-horizontal-open.png</normaloff>:/MainWindow/resources/folder-horizontal-open.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/folder-horizontal-open.png</normaloff>:/Icons/resources/folder-horizontal-open.png</iconset>
    </property>
    <property name="text">
     <string>Open</string>
@@ -563,24 +585,13 @@
     <string>Ctrl+O</string>
    </property>
   </action>
-  <action name="actionTileTool">
-   <property name="text">
-    <string/>
-   </property>
-   <property name="iconText">
-    <string/>
-   </property>
-   <property name="toolTip">
-    <string>Tile Placement Tool</string>
-   </property>
-  </action>
   <action name="actionSave">
    <property name="enabled">
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/disk.png</normaloff>:/MainWindow/resources/disk.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/disk.png</normaloff>:/Icons/resources/disk.png</iconset>
    </property>
    <property name="text">
     <string>Save</string>
@@ -594,8 +605,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/arrow-return-180-left.png</normaloff>:/MainWindow/resources/arrow-return-180-left.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/arrow-return-180-left.png</normaloff>:/Icons/resources/arrow-return-180-left.png</iconset>
    </property>
    <property name="text">
     <string>Undo</string>
@@ -609,8 +620,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/arrow-return.png</normaloff>:/MainWindow/resources/arrow-return.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/arrow-return.png</normaloff>:/Icons/resources/arrow-return.png</iconset>
    </property>
    <property name="text">
     <string>Redo</string>
@@ -624,8 +635,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/layer-resize.png</normaloff>:/MainWindow/resources/layer-resize.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/layer-resize.png</normaloff>:/Icons/resources/layer-resize.png</iconset>
    </property>
    <property name="text">
     <string>Resize</string>
@@ -642,8 +653,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/scissors-blue.png</normaloff>:/MainWindow/resources/scissors-blue.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/scissors-blue.png</normaloff>:/Icons/resources/scissors-blue.png</iconset>
    </property>
    <property name="text">
     <string>Cut</string>
@@ -657,8 +668,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/clipboard-paste.png</normaloff>:/MainWindow/resources/clipboard-paste.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/clipboard-paste.png</normaloff>:/Icons/resources/clipboard-paste.png</iconset>
    </property>
    <property name="text">
     <string>Paste</string>
@@ -672,8 +683,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/document-copy.png</normaloff>:/MainWindow/resources/document-copy.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/document-copy.png</normaloff>:/Icons/resources/document-copy.png</iconset>
    </property>
    <property name="text">
     <string>Copy</string>
@@ -687,8 +698,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/cross-script.png</normaloff>:/MainWindow/resources/cross-script.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/cross-script.png</normaloff>:/Icons/resources/cross-script.png</iconset>
    </property>
    <property name="text">
     <string>Delete</string>
@@ -761,8 +772,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/magnifier-zoom-in.png</normaloff>:/MainWindow/resources/magnifier-zoom-in.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/magnifier-zoom-in.png</normaloff>:/Icons/resources/magnifier-zoom-in.png</iconset>
    </property>
    <property name="text">
     <string>Zoom In</string>
@@ -776,8 +787,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/magnifier-zoom-out.png</normaloff>:/MainWindow/resources/magnifier-zoom-out.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/magnifier-zoom-out.png</normaloff>:/Icons/resources/magnifier-zoom-out.png</iconset>
    </property>
    <property name="text">
     <string>Zoom Out</string>
@@ -791,8 +802,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/magnifier-zoom-fit.png</normaloff>:/MainWindow/resources/magnifier-zoom-fit.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/magnifier-zoom-fit.png</normaloff>:/Icons/resources/magnifier-zoom-fit.png</iconset>
    </property>
    <property name="text">
     <string>Zoom To Fit</string>
@@ -812,8 +823,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/track_tile.png</normaloff>:/MainWindow/resources/track_tile.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/track_tile.png</normaloff>:/Icons/resources/track_tile.png</iconset>
    </property>
    <property name="text">
     <string>Placement Tool</string>
@@ -832,8 +843,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/arrow-move.png</normaloff>:/MainWindow/resources/arrow-move.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/arrow-move.png</normaloff>:/Icons/resources/arrow-move.png</iconset>
    </property>
    <property name="text">
     <string>moveTool</string>
@@ -853,8 +864,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/wand.png</normaloff>:/MainWindow/resources/wand.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/wand.png</normaloff>:/Icons/resources/wand.png</iconset>
    </property>
    <property name="text">
     <string>singleSelectionTool</string>
@@ -874,8 +885,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/arrow-circle-225.png</normaloff>:/MainWindow/resources/arrow-circle-225.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/arrow-circle-225.png</normaloff>:/Icons/resources/arrow-circle-225.png</iconset>
    </property>
    <property name="text">
     <string>Rotation Tool</string>
@@ -886,8 +897,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/new-document.png</normaloff>:/MainWindow/resources/new-document.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/new-document.png</normaloff>:/Icons/resources/new-document.png</iconset>
    </property>
    <property name="text">
     <string>New Layer</string>
@@ -901,8 +912,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/cross-script.png</normaloff>:/MainWindow/resources/cross-script.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/cross-script.png</normaloff>:/Icons/resources/cross-script.png</iconset>
    </property>
    <property name="text">
     <string>Delete Layer</string>
@@ -938,23 +949,11 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/selection-select.png</normaloff>:/MainWindow/resources/selection-select.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/selection-select.png</normaloff>:/Icons/resources/selection-select.png</iconset>
    </property>
    <property name="text">
     <string>areaSelectionTool</string>
-   </property>
-  </action>
-  <action name="actionLayer_Properties">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/property-blue.png</normaloff>:/MainWindow/resources/property-blue.png</iconset>
-   </property>
-   <property name="text">
-    <string>Layer Properties</string>
    </property>
   </action>
   <action name="actionFill_Area">
@@ -962,8 +961,8 @@
     <bool>false</bool>
    </property>
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/table-paint-can.png</normaloff>:/MainWindow/resources/table-paint-can.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/table-paint-can.png</normaloff>:/Icons/resources/table-paint-can.png</iconset>
    </property>
    <property name="text">
     <string>Fill Area</string>
@@ -1000,18 +999,6 @@
     <string>Layers</string>
    </property>
   </action>
-  <action name="actionMergeLayerWithPrevious">
-   <property name="enabled">
-    <bool>false</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/layers-group.png</normaloff>:/MainWindow/resources/layers-group.png</iconset>
-   </property>
-   <property name="text">
-    <string>Merge With Previous</string>
-   </property>
-  </action>
   <action name="actionPit">
    <property name="checkable">
     <bool>true</bool>
@@ -1024,6 +1011,27 @@
    </property>
    <property name="shortcut">
     <string>F5</string>
+   </property>
+  </action>
+  <action name="actionLayer_Properties">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/property-blue.png</normaloff>:/Icons/resources/property-blue.png</iconset>
+   </property>
+   <property name="text">
+    <string>Layer Properties</string>
+   </property>
+  </action>
+  <action name="actionMerge_Down">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/layers-group.png</normaloff>:/Icons/resources/layers-group.png</iconset>
+   </property>
+   <property name="text">
+    <string>Merge Down</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+E</string>
    </property>
   </action>
  </widget>
@@ -1047,7 +1055,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="main_window.qrc"/>
+  <include location="icons.qrc"/>
  </resources>
  <connections/>
 </ui>

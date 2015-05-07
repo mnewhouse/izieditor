@@ -49,23 +49,31 @@ namespace interface
         ui_.newLayerButton->setDefaultAction(ui_.actionNew_Layer);
         ui_.deleteLayerButton->setDefaultAction(ui_.actionDelete_Layer);
         ui_.layerPropertiesButton->setDefaultAction(ui_.actionLayer_Properties);
-        ui_.mergeLayersButton->setDefaultAction(ui_.actionMergeLayerWithPrevious);
+        ui_.mergeLayersButton->setDefaultAction(ui_.actionMerge_Down);
 
         ui_.history_undoButton->setDefaultAction(ui_.actionUndo);
         ui_.history_redoButton->setDefaultAction(ui_.actionRedo);
 
         position_label_ = new QLabel(ui_.statusBar);
-        position_label_->setMinimumWidth(100);
+        position_label_->setMinimumWidth(80);
         position_label_->setAlignment(Qt::AlignHCenter);
+
+        zoom_label_ = new QLabel(ui_.statusBar);
+        zoom_label_->setMinimumWidth(40);
+        zoom_label_->setAlignment(Qt::AlignHCenter);
 
         tool_info_label_ = new QLabel(ui_.statusBar);
         tool_info_label_->setMinimumWidth(50);
         secondary_tool_info_label_ = new QLabel(ui_.statusBar);
         secondary_tool_info_label_->setMinimumWidth(50);
 
-        ui_.statusBar->addPermanentWidget(position_label_);     
+        ui_.statusBar->addPermanentWidget(position_label_);
+        ui_.statusBar->addPermanentWidget(zoom_label_);
         ui_.statusBar->addWidget(tool_info_label_);
         ui_.statusBar->addWidget(secondary_tool_info_label_);
+
+        ui_.horizontalScrollBar->hide();
+        ui_.verticalScrollBar->hide();
 
         new_dialog_ = new NewTrackDialog(this);
         loading_dialog_ = new LoadingDialog(this);
@@ -76,6 +84,7 @@ namespace interface
         connect(ui_.actionNew, SIGNAL(triggered()), new_dialog_, SLOT(show()));
         connect(ui_.actionOpen, SIGNAL(triggered()), this, SLOT(open_track()));
         connect(ui_.actionSave, SIGNAL(triggered()), this, SLOT(save_track()));
+        connect(ui_.actionExit, SIGNAL(triggered()), this, SLOT(close()));
         
         connect(ui_.actionHistoryView, SIGNAL(triggered()), this, SLOT(toggle_history_view()));
         connect(ui_.actionLayerView, SIGNAL(triggered()), this, SLOT(toggle_layer_view()));
@@ -95,6 +104,17 @@ namespace interface
         connect(ui_.actionZoom_In, SIGNAL(triggered()), ui_.editorCanvas, SLOT(zoom_in()));
         connect(ui_.actionZoom_Out, SIGNAL(triggered()), ui_.editorCanvas, SLOT(zoom_out()));
         connect(ui_.actionZoom_to_fit, SIGNAL(triggered()), ui_.editorCanvas, SLOT(zoom_to_fit()));
+
+        connect(ui_.editorCanvas, SIGNAL(zoom_level_changed(double)), this, SLOT(zoom_level_changed(double)));
+
+        connect(ui_.editorCanvas, SIGNAL(visible_area_updated(core::DoubleRect)),
+            this, SLOT(update_scroll_bars(core::DoubleRect)));
+
+        connect(ui_.horizontalScrollBar, SIGNAL(valueChanged(int)), 
+            this, SLOT(scroll_canvas_horizontally(int)));
+
+        connect(ui_.verticalScrollBar, SIGNAL(valueChanged(int)),
+            this, SLOT(scroll_canvas_vertically(int)));
 
         connect(ui_.actionResize, SIGNAL(triggered()), this, SLOT(resize_track()));
         connect(resize_track_dialog_, SIGNAL(resize_track(std::int32_t, std::int32_t, HorizontalAnchor, VerticalAnchor)),
@@ -199,14 +219,17 @@ namespace interface
 
         connect(ui_.editorCanvas, SIGNAL(layer_level_changed(std::size_t, std::size_t)),
             ui_.layerList, SLOT(layer_level_changed(std::size_t, std::size_t)));
+
+        connect(ui_.editorCanvas, SIGNAL(layer_visibility_changed(std::size_t, bool)),
+            ui_.layerList, SLOT(layer_visibility_changed(std::size_t, bool)));
         
         connect(ui_.editorCanvas, SIGNAL(layer_selected(std::size_t)), this, SLOT(layer_selected(std::size_t)));
         connect(ui_.editorCanvas, SIGNAL(layer_deselected()), this, SLOT(layer_deselected()));
 
         connect(ui_.editorCanvas, SIGNAL(layer_merging_enabled(bool)),
-            ui_.actionMergeLayerWithPrevious, SLOT(setEnabled(bool)));
+            ui_.actionMerge_Down, SLOT(setEnabled(bool)));
 
-        connect(ui_.actionMergeLayerWithPrevious, SIGNAL(triggered()),
+        connect(ui_.actionMerge_Down, SIGNAL(triggered()),
             ui_.editorCanvas, SLOT(merge_selected_layer_with_previous()));
 
         connect(ui_.actionLayer_Properties, SIGNAL(triggered()), this, SLOT(show_layer_properties()));
@@ -267,7 +290,7 @@ namespace interface
 
         try
         {
-            components::save_track(ui_.editorCanvas->track());            
+            components::save_track(ui_.editorCanvas->track(), ui_.editorCanvas->pattern_store());            
         }
         
         catch (const std::exception& e)
@@ -279,6 +302,7 @@ namespace interface
     void MainWindow::scene_loaded(const scene::Scene* scene_ptr)
     {
         ui_.layerList->scene_loaded(scene_ptr);
+        setWindowTitle("IziEditor - " + QString::fromStdString(ui_.editorCanvas->track_name()));
         
         ui_.editorCanvas->set_active_mode(EditorMode::Tiles);
         ui_.editorCanvas->set_active_tool(EditorTool::Placement);
@@ -311,7 +335,7 @@ namespace interface
         ui_.actionNew_Layer->setEnabled(true);
         ui_.actionDelete_Layer->setEnabled(false);
         ui_.actionLayer_Properties->setEnabled(false);
-        ui_.actionMergeLayerWithPrevious->setEnabled(false);
+        ui_.actionMerge_Down->setEnabled(false);
 
         ui_.actionHistoryView->setEnabled(true);
         ui_.actionLayerView->setEnabled(true);
@@ -448,6 +472,70 @@ namespace interface
         {
             action->setChecked(true);
         }
+    }
+
+    void MainWindow::zoom_level_changed(double zoom_level)
+    {
+        int percentage = static_cast<int>(zoom_level * 100.0);
+        zoom_label_->setText(QString::number(percentage) + "%");
+    }
+
+    void MainWindow::update_scroll_bars(core::DoubleRect visible_area)
+    {
+        auto track_size = ui_.editorCanvas->track_size();
+
+        double left = visible_area.left * track_size.x;
+        double top = visible_area.top * track_size.y;
+
+        double width = visible_area.width * track_size.x;
+        double height = visible_area.height * track_size.y;
+
+        if (left >= 0.1 || width < track_size.x - 0.1)
+        {
+            auto scroll_bar = ui_.horizontalScrollBar;
+            scroll_bar->show();
+            scroll_bar->setPageStep(track_size.x);
+
+            auto max_value = static_cast<int>(std::round(track_size.x - width));
+            scroll_bar->setRange(0, max_value);            
+
+            auto value = static_cast<int>(std::round(left));
+            scroll_bar->setValue(value);
+        }
+
+        else
+        {
+            ui_.horizontalScrollBar->hide();
+        }
+
+
+        if (top >= 0.1 || height < track_size.y - 0.1)
+        {
+            auto scroll_bar = ui_.verticalScrollBar;
+            scroll_bar->show();
+            scroll_bar->setPageStep(track_size.y);
+
+            auto max_value = static_cast<int>(std::round(track_size.y - height));
+            scroll_bar->setRange(0, max_value);
+
+            auto value = static_cast<int>(std::round(top));
+            scroll_bar->setValue(value);
+        }
+
+        else
+        {
+            ui_.verticalScrollBar->hide();
+        }        
+    }
+
+    void MainWindow::scroll_canvas_horizontally(int value)
+    {
+        ui_.editorCanvas->set_left_camera_anchor(value);
+    }
+
+    void MainWindow::scroll_canvas_vertically(int value)
+    {
+        ui_.editorCanvas->set_top_camera_anchor(value);
     }
 
     void MainWindow::tile_selection_changed(std::size_t selected_tile_count)
@@ -596,8 +684,6 @@ namespace interface
         {
             tool_info_label_->setText({});
         }
-
-        secondary_tool_info_label_->setText({});
     }
 
     void MainWindow::placement_tile_rotated(std::int32_t rotation)

@@ -208,7 +208,7 @@
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="main_window.qrc">
+         <iconset>
           <normaloff>:/MainWindow/resources/plus-white.png</normaloff>:/MainWindow/resources/plus-white.png</iconset>
         </property>
        </widget>
@@ -219,7 +219,7 @@
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="main_window.qrc">
+         <iconset>
           <normaloff>:/MainWindow/resources/cross-script.png</normaloff>:/MainWindow/resources/cross-script.png</iconset>
         </property>
        </widget>
@@ -315,8 +315,8 @@
   </widget>
   <action name="actionAddAsset">
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/plus-white.png</normaloff>:/MainWindow/resources/plus-white.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/plus-white.png</normaloff>:/Icons/resources/plus-white.png</iconset>
    </property>
    <property name="text">
     <string>Add Asset</string>
@@ -324,8 +324,8 @@
   </action>
   <action name="actionRemoveAsset">
    <property name="icon">
-    <iconset resource="main_window.qrc">
-     <normaloff>:/MainWindow/resources/cross-script.png</normaloff>:/MainWindow/resources/cross-script.png</iconset>
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/minus-white.png</normaloff>:/Icons/resources/minus-white.png</iconset>
    </property>
    <property name="text">
     <string>Remove Asset</string>
@@ -333,7 +333,7 @@
   </action>
  </widget>
  <resources>
-  <include location="main_window.qrc"/>
+  <include location="icons.qrc"/>
  </resources>
  <connections/>
 </ui>

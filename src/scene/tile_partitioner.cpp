@@ -206,7 +206,7 @@ scene::impl::ImageRectMap scene::impl::compute_image_rects_no_overlap(const Tile
     ImageRectMap result;
     
     for (const TileDefinition* tile_def = tile_library.first_tile(); tile_def != nullptr;
-        tile_def = tile_library.next_tile(tile_def))
+        tile_def = tile_library.next_tile(tile_def->id))
     {
         const std::string& image_file = tile_def->image_file();
         IntRect image_rect = tile_def->image_rect;
@@ -430,7 +430,7 @@ scene::TileMapping scene::create_tile_mapping(const TileLibrary& tile_library,
     }
 
     std::unordered_map<std::string, std::vector<const TileDefinition*>> tiles_by_image;
-    for (auto tile = tile_library.first_tile(); tile != nullptr; tile = tile_library.next_tile(tile))
+    for (auto tile = tile_library.first_tile(); tile != nullptr; tile = tile_library.next_tile(tile->id))
     {
         const auto& file = tile->image_file();
         tiles_by_image[file].push_back(tile);

@@ -84,29 +84,24 @@ namespace components
                 }
             }
 
+            else if (directive == "viscosity")
+            {
+                line_stream >> terrain_def.viscosity;
+            }
+
             else if (directive == "steering")
             {
                 line_stream >> terrain_def.steering;
             }
 
-            else if (directive == "antislide")
+            else if (directive == "grip")
             {
-                line_stream >> terrain_def.antislide;
+                line_stream >> terrain_def.grip;
             }
 
             else if (directive == "acceleration")
             {
                 line_stream >> terrain_def.acceleration;
-            }
-
-            else if (directive == "drag")
-            {
-                line_stream >> terrain_def.drag;
-            }
-
-            else if (directive == "traction")
-            {
-                line_stream >> terrain_def.traction;
             }
 
             else if (directive == "braking")
@@ -116,7 +111,7 @@ namespace components
 
             else if (directive == "bounciness")
             {
-                line_stream >> terrain_def.wall_definition.elasticity;
+                line_stream >> terrain_def.wall.elasticity;
             }
 
             else if (directive == "red")

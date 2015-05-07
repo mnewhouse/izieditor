@@ -60,7 +60,7 @@ namespace interface
         case LoadingState::LoadingImages:
             return "Loading Images...";
 
-        case LoadingState::LoadingPattern:
+        case LoadingState::LoadingPatterns:
             return "Loading Patterns...";
 
         default:

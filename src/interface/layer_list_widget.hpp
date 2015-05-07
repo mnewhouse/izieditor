@@ -129,13 +129,6 @@ namespace interface
         void dispatch_layer_show_signal(std::size_t layer_id);
         void dispatch_layer_rename_signal(std::size_t layer_id, const std::string& new_name);
 
-        /*
-        void new_layer_request();
-        void new_layer_request(const std::string& layer_name, std::size_t level);
-
-        void delete_layer_request(std::size_t layer_id);
-        */
-
         void update_layer_selection(std::size_t layer_id);
         
         void layer_created(std::size_t layer_id, std::size_t index);
@@ -146,6 +139,7 @@ namespace interface
         void layer_deselected();
 
         void layer_level_changed(std::size_t, std::size_t);
+        void layer_visibility_changed(std::size_t, bool);
 
     private:
         virtual void selectionChanged(const QItemSelection&, const QItemSelection&) override;

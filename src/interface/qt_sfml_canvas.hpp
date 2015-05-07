@@ -30,6 +30,8 @@
 #include <QtWidgets/qwidget.h>
 #include <QtCore/qtimer.h>
 
+#include "core/vector2.hpp"
+
 namespace interface
 {
     class QtSFMLCanvas
@@ -40,18 +42,50 @@ namespace interface
 
         virtual ~QtSFMLCanvas() = default;
 
-    private:
-        virtual QPaintEngine* paintEngine() const override;
+        using CursorId = std::size_t;
+        enum : CursorId
+        {
+            InvalidCursorId = -1
+        };
+
+        CursorId create_cursor(const sf::Image& image, sf::IntRect rect = sf::IntRect());
+
+        void set_active_cursor(CursorId);
+
+    protected:
+        void set_prioritized_cursor(CursorId);
+
         virtual void showEvent(QShowEvent*) override;
         virtual void paintEvent(QPaintEvent*) override;
         virtual void resizeEvent(QResizeEvent*) override;
         virtual void closeEvent(QCloseEvent*) override;
 
+        virtual void leaveEvent(QEvent*) override;
+        virtual void enterEvent(QEvent*) override;
+
+
+    private:
+        void render();
+        void draw_cursor();
+
+        bool cursor_override_enabled() const;
+
+        virtual QPaintEngine* paintEngine() const override;
+
+
         virtual void onInitialize() {}
         virtual void onRender() {}        
 
         bool initialized_ = false;
+        bool cursor_visible_ = false;
+
         QTimer timer_;
+
+        std::map<CursorId, sf::Texture> cursor_map_;
+        CursorId active_cursor_ = InvalidCursorId;
+        CursorId prioritized_cursor_ = InvalidCursorId;
+        core::Vector2i mouse_position_;
+
     };
 }
 

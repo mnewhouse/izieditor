@@ -33,6 +33,7 @@
 
 #include "components/track.hpp"
 #include "components/tile_definition.hpp"
+#include "components/pattern.hpp"
 
 #include <unordered_set>
 
@@ -58,9 +59,11 @@ namespace scene
 
         loading_state_ = LoadingState::LoadingImages;
         std::unordered_set<std::string> distinct_images;
-        for (auto tile = tile_library.first_tile(); tile; tile = tile_library.next_tile(tile))
+        std::unordered_set<std::string> distinct_patterns;
+        for (auto tile = tile_library.first_tile(); tile; tile = tile_library.next_tile(tile->id))
         {
             distinct_images.insert(tile->image_file());
+            distinct_patterns.insert(tile->pattern_file());
         }
 
         loading_progress_ = 0.0;
@@ -71,21 +74,34 @@ namespace scene
             image_loader.load_from_file(image);
             ++images_loaded;
             loading_progress_ = images_loaded / static_cast<double>(num_images);
-        }        
+        }
+
+        loading_progress_ = 0.0;
+        loading_state_ = LoadingState::LoadingPatterns;
+        std::size_t num_patterns = distinct_patterns.size(), patterns_loaded = 0;
+        components::PatternStore pattern_store;
+        for (const auto& pattern : distinct_patterns)
+        {
+            pattern_store.load_from_file(pattern);
+            ++patterns_loaded;
+            loading_progress_ = patterns_loaded / static_cast<double>(num_patterns);
+        }
 
         std::function<void(double)> update_progress = [=](double progress)
         {
             loading_progress_ = progress;
         };
         
-        auto tile_mapping = create_tile_mapping(track.tile_library(), std::move(image_loader), update_progress);
+        loading_progress_ = 0.0;
         loading_state_ = LoadingState::MappingTiles;
+        auto tile_mapping = create_tile_mapping(track.tile_library(), std::move(image_loader), update_progress);        
 
         loading_progress_ = 0.0;
         loading_state_ = LoadingState::BuildingScene;
         auto track_display = create_track_layer_map(track, tile_mapping, update_progress);        
 
-        return std::unique_ptr<Scene>(new Scene(std::move(track), std::move(tile_mapping), std::move(track_display)));
+        return std::unique_ptr<Scene>(new Scene(std::move(track), std::move(pattern_store), 
+            std::move(tile_mapping), std::move(track_display)));
     }
 
     bool SceneLoader::is_finished() const

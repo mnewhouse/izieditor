@@ -29,105 +29,119 @@
 #include "control_point.hpp"
 #include "start_point.hpp"
 
+#include "pattern_store.hpp"
+#include "pattern_builder.hpp"
+
+#include <boost/filesystem/path.hpp>
+
 #include <fstream>
 
-components::SaveError::SaveError(const std::string& file_name)
-    : std::runtime_error("could not open " + file_name + " for writing")
+namespace components
 {
-}
-
-void components::save_track(const Track& track)
-{
-    save_track(track, track.path());
-}
-
-void components::save_track(const Track& track, const std::string& file_name)
-{
-    std::ofstream out(file_name);
-
-    if (!out)
+    SaveError::SaveError(const std::string& file_name)
+        : std::runtime_error("could not open " + file_name + " for writing")
     {
-        throw SaveError(file_name);
     }
 
-    out << "# This is a Turbo Sliders track file\n";
-    out << "# Do not change the order of the following lines!\n";
-    out << "# This track was saved with IziEditor.\n";
-
-    auto track_size = track.size();
-    out << "Size td " << track.num_levels() << " " << track_size.x << " " << track_size.y << "\n";
-    out << "Hash 0 0 0 0\n"; // TODO
-    out << "Maker " << (track.author().empty() ? "Anonymous" : track.author()) << "\n";
-    out << "FormatVersion 2\n";
-
-    const auto& pattern = track.pattern();
-    if (!pattern.empty())
+    void save_track(const Track& track, const PatternStore& pattern_store)
     {
-        out << "Pattern " << track.pattern() << "\n";
+        save_track(track, pattern_store, track.path());
     }
 
-    else
+    void save_track_pattern(const Track& track, const PatternStore& pattern_store, const std::string& file_name)
     {
-        out << "Pattern " << track.name() << "-pat.png\n";
-    }
-    
-    for (const auto& asset : track.assets())
-    {
-        out << "Include " << asset << "\n";
+        PatternBuilder pattern_builder(track, pattern_store);
+
+        auto pattern = pattern_builder();
+        save_pattern(pattern, track.terrain_library(), file_name);
     }
 
-    const auto& control_points = track.control_points();
-    out << "ControlPoints " << control_points.size() << "\n";
-    
-    for (const auto& point : control_points)
+    void save_track(const Track& track, const PatternStore& pattern_store, const std::string& file_name)
     {
-        int direction = point.direction == ControlPoint::Vertical ? 0 : 1;
+        std::ofstream out(file_name);
 
-        out << "  Point " << point.start.x << " " << point.start.y << " " << point.length << " " << direction << "\n";
-    }
-    out << "End\n";
-
-    if (auto pit = track.pit())
-    {
-        out << "Pit " << pit->left << " " << pit->top << " " << pit->width << " " << pit->height << "\n";
-    }
-
-    const auto& start_points = track.start_points();
-    if (!start_points.empty())
-    {
-        out << "StartPoints " << start_points.size() << "\n";
-
-        for (const auto& point : start_points)
+        if (!out)
         {
-            auto degrees = static_cast<std::int32_t>(point.rotation.degrees(core::rotation::absolute));
-            out << "  Point " << point.position.x << " " << point.position.y << " " << degrees << "\n";
+            throw SaveError(file_name);
+        }
+
+        out << "# This is a Turbo Sliders track file\n";
+        out << "# Do not change the order of the following lines!\n";
+        out << "# This track was saved with IziEditor.\n";
+
+        auto track_size = track.size();
+        out << "Size td " << track.num_levels() << " " << track_size.x << " " << track_size.y << "\n";
+        out << "Hash 0 0 0 0\n"; // TODO
+        out << "Maker " << (track.author().empty() ? "Anonymous" : track.author()) << "\n";
+        out << "FormatVersion 2\n";
+
+        auto pattern = track.pattern();
+        if (pattern.empty())
+        {
+            pattern = track.name() + "-pat.png";
+        }
+        out << "Pattern " << pattern << "\n";
+
+        for (const auto& asset : track.assets())
+        {
+            out << "Include " << asset << "\n";
+        }
+
+        const auto& control_points = track.control_points();
+        out << "ControlPoints " << control_points.size() << "\n";
+
+        for (const auto& point : control_points)
+        {
+            int direction = point.direction == ControlPoint::Vertical ? 0 : 1;
+
+            out << "  Point " << point.start.x << " " << point.start.y << " " << point.length << " " << direction << "\n";
+        }
+        out << "End\n";
+
+        if (auto pit = track.pit())
+        {
+            out << "Pit " << pit->left << " " << pit->top << " " << pit->width << " " << pit->height << "\n";
+        }
+
+        const auto& start_points = track.start_points();
+        if (!start_points.empty())
+        {
+            out << "StartPoints " << start_points.size() << "\n";
+
+            for (const auto& point : start_points)
+            {
+                auto degrees = static_cast<std::int32_t>(point.rotation.degrees(core::rotation::absolute));
+                out << "  Point " << point.position.x << " " << point.position.y << " " << degrees << "\n";
+            }
+
+            out << "End\n";
+        }
+
+        for (const auto& layer : track.layers())
+        {
+            out << "Layer " << layer->level << " " << static_cast<int>(layer->visible) << " " << layer->name << "\n";
+            for (const auto& tile : layer->tiles)
+            {
+                int x = static_cast<int>(tile.position.x);
+                int y = static_cast<int>(tile.position.y);
+                int rotation = static_cast<int>(tile.rotation.degrees(core::rotation::absolute));
+
+                if (layer->level == 0)
+                {
+                    out << "A " << tile.id << " " << x << " " << y << " " << rotation << "\n";
+                }
+
+                else
+                {
+                    out << "LevelTile " << layer->level << " " << tile.id << " " << x << " " << y << " " << rotation << "\n";
+                }
+            }
         }
 
         out << "End\n";
-    }    
-
-    for (const auto& layer : track.layers())
-    {
-        out << "Layer " << layer->level << " " << static_cast<int>(layer->visible) << " " << layer->name << "\n";
-        for (const auto& tile : layer->tiles)
-        {
-            int x = static_cast<int>(tile.position.x);
-            int y = static_cast<int>(tile.position.y);
-            int rotation = static_cast<int>(tile.rotation.degrees(core::rotation::absolute));
-
-            if (layer->level == 0)
-            {
-                out << "A " << tile.id << " " << x << " " << y << " " << rotation << "\n";
-            }
-
-            else
-            {
-                out << "LevelTile " << layer->level << " " << tile.id << " " << x << " " << y << " " << rotation << "\n";
-            }            
-        }
+        
+        boost::filesystem::path pattern_path = track.path();
+        pattern_path = pattern_path.parent_path() / pattern;
+        save_track_pattern(track, pattern_store, pattern_path.string());
     }
-
-
-    out << "End\n";
-
 }

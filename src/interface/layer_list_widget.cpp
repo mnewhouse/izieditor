@@ -36,8 +36,8 @@
 namespace interface
 {
     static const QString visibility_checkbox_style = "QCheckBox::indicator{ width: 18px; height: 18px; }"
-        "QCheckBox::indicator:unchecked { image: url(:/MainWindow/resources/eye-close.png); }"
-        "QCheckBox::indicator:checked { image: url(:/MainWindow/resources/eye.png); }";
+        "QCheckBox::indicator:unchecked { image: url(:/Icons/resources/eye-close.png); }"
+        "QCheckBox::indicator:checked { image: url(:/Icons/resources/eye.png); }";
 
     LayerListView::LayerListView(QWidget* parent)
         : QListView(parent)
@@ -68,9 +68,10 @@ namespace interface
 
         reset();
 
-        for (int row = 0; row != layers.size(); ++row)
+        int row = 0;
+        for (std::size_t idx = layers.size(); idx-- != 0; ++row)
         {
-            const auto& layer = layers[row];
+            const auto& layer = layers[idx];
             auto index = model_->index(row, 0);
 
             auto widget = new LayerListItemWidget(this, layer);
@@ -80,7 +81,7 @@ namespace interface
             connect(widget, SIGNAL(show_layer(std::size_t)), this, SLOT(dispatch_layer_show_signal(std::size_t)));
             connect(widget, SIGNAL(rename_layer(std::size_t, const std::string&)),
                 this, SLOT(dispatch_layer_rename_signal(std::size_t, const std::string&)));
-        }        
+        }
 
         request_selected_layer_update();
     }
@@ -114,11 +115,14 @@ namespace interface
 
         if (indices.size() == 1)
         {
-            auto source_row = indices.front().row();
-            auto dest_row = indexAt(event->pos()).row();
+            std::size_t source_row = indices.front().row();
+            std::size_t dest_row = indexAt(event->pos()).row();
 
             const auto& layers = model_->scene()->track().layers();
-            model_->move_layer(layers[source_row].id(), dest_row);
+            std::size_t source_index = layers.size() - source_row - 1;
+            std::size_t dest_index = layers.size() - dest_row - 1;
+            
+            model_->move_layer(layers[source_index].id(), dest_index);
 
             populate_view();
         }
@@ -176,6 +180,11 @@ namespace interface
         populate_view();
     }
 
+    void LayerListView::layer_visibility_changed(std::size_t layer_id, bool visibility)
+    {
+        populate_view();
+    }
+
     void LayerListView::layer_deselected()
     {
         selectionModel()->select(QModelIndex(), QItemSelectionModel::Clear);
@@ -185,11 +194,13 @@ namespace interface
     {
         if (model_)
         {
+            const auto& layers = model_->scene()->layers();
             auto index = model_->scene()->find_layer_index(selected_layer);
 
-            if (index != model_->scene()->layer_count())
+            if (index != layers.size())
             {
-                auto model_index = model_->index(index);
+                std::size_t row = layers.size() - index - 1;
+                auto model_index = model_->index(row);
                 selectionModel()->select(model_index, QItemSelectionModel::ClearAndSelect);
             }
 
@@ -208,8 +219,8 @@ namespace interface
             const auto& layers = model_->scene()->track().layers();
             if (indices.size() == 1)
             {
-                std::size_t index = indices.front().row();
-                const auto& layer = layers[index];
+                std::size_t row = indices.front().row();
+                const auto& layer = layers[layers.size() - row - 1];
 
                 select_layer(layer.id());
             }
@@ -269,10 +280,11 @@ namespace interface
     {
         if (scene_ == nullptr) return false;
 
-        std::size_t source_index = sourceRow;
-        std::size_t dest_index = destinationChild;
-
         const auto& layers = scene_->track().layers();
+
+        std::size_t source_index = layers.size() - sourceRow - 1;
+        std::size_t dest_index = layers.size() - destinationChild - 1;
+
         if (source_index >= layers.size() || dest_index >= layers.size() || count != 1) return false;
 
         std::size_t level = layers[source_index]->level;

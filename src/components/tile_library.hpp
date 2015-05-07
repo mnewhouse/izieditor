@@ -50,7 +50,7 @@ namespace components
         const TileGroupDefinition* previous_tile_group(TileId current) const;
 
         const TileDefinition* first_tile() const;
-        const TileDefinition* next_tile(const TileDefinition* current) const;
+        const TileDefinition* next_tile(TileId current) const;
 
     private:
         std::map<TileId, TileDefinition> tile_map_;

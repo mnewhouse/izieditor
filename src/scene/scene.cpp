@@ -36,13 +36,16 @@ namespace scene
 {
     Scene::Scene(components::Track&& track)
         : track_(std::move(track)),
+          pattern_store_(components::load_pattern_files(track_.tile_library())),
           tile_mapping_(create_tile_mapping(track_.tile_library())),
           track_display_(create_track_layer_map(track_, tile_mapping_))
     {
     }
 
-    Scene::Scene(components::Track&& track, TileMapping&& tile_mapping, DisplayLayerMap&& track_display)
+    Scene::Scene(components::Track&& track, components::PatternStore&& pattern_store,
+        TileMapping&& tile_mapping, DisplayLayerMap&& track_display)
         : track_(std::move(track)),
+          pattern_store_(std::move(pattern_store)),
           tile_mapping_(std::move(tile_mapping)),
           track_display_(std::move(track_display))
     {
@@ -51,6 +54,11 @@ namespace scene
     const components::Track& Scene::track() const
     {
         return track_;
+    }
+
+    const components::PatternStore& Scene::pattern_store() const
+    {
+        return pattern_store_;
     }
 
     const components::TileLibrary& Scene::tile_library() const
@@ -282,6 +290,11 @@ namespace scene
 
     void Scene::hide_layer(std::size_t layer_id)
     {
+        if (auto layer = track_.layer_by_id(layer_id))
+        {
+            layer->visible = false;
+        }
+
         auto map_it = track_display_.find(layer_id);
         if (map_it != track_display_.end())
         {
@@ -291,6 +304,11 @@ namespace scene
 
     void Scene::show_layer(std::size_t layer_id)
     {
+        if (auto layer = track_.layer_by_id(layer_id))
+        {
+            layer->visible = true;
+        }
+
         auto map_it = track_display_.find(layer_id);
         if (map_it != track_display_.end())
         {

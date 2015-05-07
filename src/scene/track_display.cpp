@@ -218,7 +218,7 @@ namespace scene
 
             vertices_.erase(vertices_.begin() + vertex_index, vertices_.begin() + vertex_index + vertex_count);
 
-            auto shift_it = tile_info_.begin() + tile_index;
+            auto shift_it = tile_info_.begin() + tile_index + 1;
             std::transform(shift_it, tile_info_.end(), shift_it,
                 [vertex_count](Tile tile)
             {

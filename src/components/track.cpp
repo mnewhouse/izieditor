@@ -217,6 +217,11 @@ namespace components
 
             new_index = std::min(order.size(), new_index);
             order.insert(order.begin() + new_index, value);
+            std::stable_sort(order.begin(), order.end(), 
+                [](const ConstLayerHandle& a, const ConstLayerHandle& b)
+            {
+                return a->level < b->level;
+            });
         }
     }
 

@@ -7,6 +7,12 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(SFML_STATIC_LIBRARIES OFF)
 
+set(STATIC_STD_LIBS OFF)
+set(PNG_TESTS OFF)
+set(PNG_SHARED ON)
+set(PNG_STATIC OFF)
+set(PNG_NO_STDIO OFF)
+
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # Instruct CMake to run moc automatically when needed.
@@ -19,7 +25,16 @@ file(GLOB_RECURSE SRC src/*.cpp src/*.hpp src/*.inl)
 file(GLOB_RECURSE UI_FILES src/interface/*.ui)
 file(GLOB_RECURSE QRC_FILES src/interface/*.qrc)
 
+add_subdirectory(extlibs/zlib-1.2.8)
+add_subdirectory(extlibs/libpng-1.2.51)
+
 include_directories("${PROJECT_SOURCE_DIR}/src")
+
+include_directories("${PROJECT_SOURCE_DIR}/src")
+include_directories("${PROJECT_SOURCE_DIR}/include")
+
+include_directories(${ZLIB_INCLUDE_DIR})
+include_directories(${PNG_INCLUDE_DIR})
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules" ${CMAKE_MODULE_PATH})
 
@@ -50,5 +65,6 @@ if(Boost_FOUND)
     target_link_libraries(izieditor ${Boost_LIBRARIES})
 endif()
 
-
+target_link_libraries(izieditor zlib)
+target_link_libraries(izieditor png12)
 target_link_libraries(izieditor Qt5::Widgets)

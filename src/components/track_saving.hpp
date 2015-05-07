@@ -32,7 +32,7 @@
 namespace components
 {
     class Track;
-
+    class PatternStore;
 
     struct SaveError
         : std::runtime_error
@@ -40,8 +40,8 @@ namespace components
         SaveError(const std::string& file_name);
     };
 
-    void save_track(const Track& track);
-    void save_track(const Track& track, const std::string& file_name);
+    void save_track(const Track& track, const PatternStore& pattern_store);
+    void save_track(const Track& track, const PatternStore& pattern_store, const std::string& file_name);
 }
 
 #endif

@@ -28,6 +28,7 @@
 
 #include "qt_sfml_canvas.hpp"
 #include "resize_anchor.hpp"
+#include "editor_modes.hpp"
 
 #include "core/vector2.hpp"
 
@@ -45,53 +46,11 @@ namespace scene
 namespace components
 {
     class Track;
+    class PatternStore;
 }
 
 namespace interface
 {
-    enum class EditorMode
-    {
-        None,
-        Tiles,
-        ControlPoints,
-        StartPoints,
-        Pit,
-        Pattern
-    };
-
-    enum class EditorTool
-        : std::uint32_t
-    {
-        None = 0,
-        Placement = 1,
-        AreaSelection = 2,
-        TileSelection = 4,
-        Movement = 8,
-        Rotation = 16,
-        All = 31
-    };
-
-    inline std::uint32_t operator|(EditorTool a, EditorTool b)
-    {
-        return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b);
-    }
-
-    inline std::uint32_t operator|(std::uint32_t a, EditorTool b)
-    {
-        return a | static_cast<std::uint32_t>(b);
-    }
-
-    inline std::uint32_t operator|(EditorTool a, std::uint32_t b)
-    {
-        return static_cast<std::uint32_t>(a) | b;
-    }
-
-    inline std::uint32_t operator&(std::uint32_t a, EditorTool b)
-    {
-        return a & static_cast<std::uint32_t>(b);
-    }
-
-
     struct FillProperties;
 
     class Action;
@@ -108,12 +67,12 @@ namespace interface
         virtual void onRender() override;
         virtual void onResize() override;
 
-        virtual void leaveEvent(QEvent*) override;
         virtual void mouseMoveEvent(QMouseEvent*) override;
         virtual void mousePressEvent(QMouseEvent*) override;
         virtual void mouseReleaseEvent(QMouseEvent*) override;
         virtual void wheelEvent(QWheelEvent*) override;
         virtual void keyPressEvent(QKeyEvent*) override;
+        virtual void keyReleaseEvent(QKeyEvent*) override;
 
         EditorTool active_tool() const;
         EditorMode active_mode() const;
@@ -121,14 +80,24 @@ namespace interface
 
         const scene::Scene* scene() const;
         const components::Track& track() const;
+        const components::PatternStore& pattern_store() const;
+
         std::size_t num_levels() const;
         core::Vector2i track_size() const;
+        const std::string& track_name() const;
 
         const components::ConstLayerHandle& selected_layer() const;
         core::IntRect selected_area() const;
 
         core::Vector2i mouse_position() const;
+
         double zoom_level() const;
+        void set_zoom_level(double zoom_level);
+
+        void set_left_camera_anchor(double x);
+        void set_top_camera_anchor(double y);
+
+        void set_active_cursor(EditorCursor cursor);
 
         void perform_action(const std::string& text, std::function<void()>, std::function<void()>);
 
@@ -187,6 +156,11 @@ namespace interface
         void perform_action(const Action& action);
 
         void scene_loaded(const scene::Scene* scene_ptr);
+        void track_resized(core::Vector2i new_size);
+
+        void zoom_level_changed(double zoom_level);
+
+        void visible_area_updated(core::DoubleRect area);
 
         void tool_changed(EditorTool);
         void mode_changed(EditorMode);
@@ -230,8 +204,13 @@ namespace interface
         void layer_moved(std::size_t layer_id, std::size_t new_index);
         void layer_renamed(std::size_t layer_id, const std::string& new_name);
         void layer_level_changed(std::size_t layer_id, std::size_t new_level);
+        void layer_visibility_changed(std::size_t layer_id, bool visible);
 
     private:
+        void set_prioritized_cursor(EditorCursor cursor);
+        using QtSFMLCanvas::set_prioritized_cursor;
+        using QtSFMLCanvas::set_active_cursor;
+
         struct Impl;
         std::unique_ptr<Impl> impl_;
     };
