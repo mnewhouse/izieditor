@@ -29,29 +29,50 @@
 #include "terrain_definition.hpp"
 
 #include <vector>
+#include <array>
 
 namespace components
 {
     // The terrain library stores all the terrains and sub-terrains, and provides functions
     // to obtain information about said terrains and sub-terrains.
 
+    using TerrainHash = std::array<std::uint32_t, 4>;
+
     class TerrainLibrary
     {
     public:
         TerrainLibrary();
 
-        void define_terrain(const TerrainDefinition& TerrainDefinition);
+        void define_terrain(TerrainDefinition TerrainDefinition);
         void define_sub_terrain(const SubTerrain& sub_terrain);
 
         const TerrainDefinition& terrain_by_id(TerrainId id) const;
-        TerrainId sub_terrain(TerrainId id, std::size_t level) const;
+        const TerrainDefinition& sub_terrain(TerrainId id, std::uint32_t index) const;
 
+        double sub_terrain_level(TerrainId terrain, std::uint32_t index) const;
+        double sub_terrain_roof_level(TerrainId terrain, std::uint32_t index) const;
+
+        const TerrainHash& terrain_hash(TerrainId id) const;
 
     private:
-        void define_sub_terrain(TerrainId terrain, TerrainId sub_id, std::size_t level);
+        TerrainHash calculate_terrain_hash(TerrainId id) const;
+        bool has_custom_sub_terrains(TerrainId terrain_id) const;
 
-        TerrainDefinition terrains_[256];
-        std::vector<TerrainId> sub_terrains_;
+        struct InternalTerrainDefinition
+            : TerrainDefinition
+        {
+            std::array<std::uint32_t, 4> hash;
+        };
+
+        struct SubTerrainDefinition
+            : TerrainDefinition
+        {
+            double level = 0.0;
+            double roof_level = 0.0;
+        };
+
+        std::vector<InternalTerrainDefinition> terrains_;
+        std::vector<SubTerrainDefinition> sub_terrains_;
     };
 }
 

@@ -48,7 +48,7 @@ namespace components
         std::vector<ConstLayerHandle> layer_order_;
 
         std::vector<StartPoint> start_points_;
-        boost::optional<core::Rotation<double>> start_direction_override_;
+        boost::optional<std::int32_t> start_direction_override_;
         boost::optional<core::IntRect> pit_;
 
         std::vector<ControlPoint> control_points_;
@@ -359,7 +359,12 @@ namespace components
         }
     }
 
-    core::Rotation<double> Track::start_direction() const
+    bool Track::is_start_direction_overridden() const
+    {
+        return track_features_->start_direction_override_.is_initialized();
+    }
+
+    std::int32_t Track::start_direction() const
     {
         if (track_features_->start_direction_override_)
         {
@@ -371,13 +376,11 @@ namespace components
             const auto& finish_line = control_points().front();
             if (finish_line.direction == ControlPoint::Horizontal)
             {
-                return Rotation<double>::degrees(90.0);
+                return 90;
             }
-
-            return Rotation<double>::degrees(0.0);
         }
 
-        return Rotation<double>::degrees(0.0);
+        return 0;
     }
 
     void Track::define_pit(core::IntRect pit)

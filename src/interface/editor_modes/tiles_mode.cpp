@@ -42,6 +42,8 @@
 #include <boost/optional.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 
+#include <numeric>
+
 NAMESPACE_INTERFACE_MODES
 
 static const std::string selection_vertex_shader_code =
@@ -522,7 +524,7 @@ void TilesMode::place_tile()
         components::Tile tile;
         tile.position = tile_placement.tile_position_;
         tile.id = tile_placement.current_tile->id();
-        tile.rotation = core::Rotation<double>::degrees(tile_placement.rotation);
+        tile.rotation = tile_placement.rotation;
 
         std::size_t layer_id = selected_layer.id();
         if (tile.id >= 5000 && selected_layer->level == 0)
@@ -558,7 +560,7 @@ void TilesMode::place_tile_before()
         components::Tile tile;
         tile.position = tile_placement.tile_position_;
         tile.id = tile_placement.current_tile->id();
-        tile.rotation = core::Rotation<double>::degrees(tile_placement.rotation);
+        tile.rotation = tile_placement.rotation;
 
         std::size_t layer_id = selected_layer.id();
         if (tile.id >= 5000 && selected_layer->level == 0)
@@ -644,7 +646,8 @@ void TilesMode::update_tile_selection(core::Vector2i track_point)
         position.x -= tile_it->position.x;
         position.y -= tile_it->position.y;
 
-        position = core::transform_point(position, -tile_it->rotation);
+        auto rotation = core::Rotation<double>::degrees(tile_it->rotation);
+        position = core::transform_point(position, -rotation);
 
         auto map_it = bounding_boxes.find(tile_group->id());
         if (map_it != bounding_boxes.end() && contains(map_it->second, position))
@@ -809,10 +812,15 @@ void TilesMode::update_tile_placement()
         dummy_tile.id = tile_placement.current_tile->id();
         dummy_tile.position.x = 0.0;
         dummy_tile.position.y = 0.0;
-        dummy_tile.rotation = core::Rotation<double>::degrees(tile_placement.rotation);
+        dummy_tile.rotation = tile_placement.rotation;
 
         tile_placement.display_layer_ = scene::create_display_layer(&dummy_tile, &dummy_tile + 1,
             tile_library, tile_mapping);
+    }
+
+    else
+    {
+        tile_placement.display_layer_.clear();
     }
 }
 
@@ -933,10 +941,16 @@ void TilesMode::rotate_selected_tiles(core::Rotation<double> rotation_delta, boo
         auto& tile_selection = features_->tile_selection_;
         for (auto& tile : tile_selection.selected_tiles_)
         {
-            tile.second.rotation += rotation_delta;
+            auto rotation = core::Rotation<double>::degrees(tile.second.rotation);
+            rotation += rotation_delta;
 
-            auto offset = core::transform_point(tile.second.position - origin, rotation_delta);
-            tile.second.position = origin + offset;
+            tile.second.rotation = static_cast<std::int32_t>(std::round(rotation.degrees()));
+
+            core::Vector2<double> position = tile.second.position;
+
+            auto offset = core::transform_point(position - origin, rotation_delta);
+            tile.second.position.x = static_cast<std::int32_t>(std::round(origin.x + offset.x));
+            tile.second.position.y = static_cast<std::int32_t>(std::round(origin.y + offset.y));
 
             scene()->update_tile_preview(selected_layer.id(), tile.first, tile.second);
         }
@@ -1158,7 +1172,7 @@ void TilesMode::copy_selection()
     }
 }
 
-void TilesMode::paste_clipboard(core::Vector2<double> position)
+void TilesMode::paste_clipboard(core::Vector2i position)
 {
     if (auto selected_layer = canvas()->selected_layer())
     {
@@ -1167,11 +1181,13 @@ void TilesMode::paste_clipboard(core::Vector2<double> position)
         const auto& clipboard = features_->clipboard_;
         const auto& selection = features_->tile_selection_.selected_tiles_;
 
-        core::Vector2<double> average_position = std::accumulate(clipboard.tiles_.begin(), clipboard.tiles_.end(), core::Vector2<double>(),
-            [](core::Vector2<double> pos, const components::Tile& tile)
+        core::Vector2i average_position = std::accumulate(clipboard.tiles_.begin(), clipboard.tiles_.end(), core::Vector2i(),
+            [](core::Vector2i pos, const components::Tile& tile)
         {
             return pos + tile.position;
-        }) / static_cast<double>(clipboard.tiles_.size());;
+        });
+        
+        average_position /= clipboard.tiles_.size();
 
         auto command = [=]()
         {
@@ -1246,7 +1262,7 @@ void TilesMode::fill_area(const FillProperties& properties)
         prop.density = properties.density * 0.01;
         prop.position_jitter = properties.position_jitter * 0.01;
         prop.randomize_rotation = properties.randomize_rotation;
-        prop.rotation = core::Rotation<double>::degrees(static_cast<double>(properties.rotation));
+        prop.rotation = properties.rotation;
 
         if (properties.area == FillProperties::Selection)
         {

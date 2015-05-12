@@ -39,6 +39,7 @@
 #include <unordered_set>
 #include <sstream>
 #include <fstream>
+#include <iostream>
 
 #include <boost/filesystem.hpp>
 
@@ -227,13 +228,13 @@ namespace components
 
                 if (std::getline(line_stream, include_path))
                 {
-                    boost::trim(include_path);
+                    boost::trim(include_path);        
 
                     include(include_path, num_levels + 1);
 
                     if (num_levels == 0)
                     {
-                        track_.add_asset(include_path);
+                        track_.add_asset(include_path);                        
                     }
                 }
             }
@@ -342,7 +343,7 @@ namespace components
             add_asset(std::move(pattern_path));
             add_asset(std::move(image_path));
 
-            for (directive_.clear(); directive_ != "end" && std::getline(stream, line_);)
+            for (directive_.clear(); directive_ != "end" && std::getline(stream, line_); )
             {
                 line_stream_.clear();
                 line_stream_.str(line_);
@@ -352,6 +353,12 @@ namespace components
                 if ((directive_ == "tile" || directive_ == "norottile") && line_stream_ >> tile_def)
                 {
                     track_.define_tile(tile_def);
+                }
+
+                else if (!line_stream_ && tile_def.id == 515)
+                {
+                    for (char ch : line_)
+                        printf("%c ", ch);
                 }
             }
         }
@@ -437,10 +444,8 @@ namespace components
             core::read_directive(line_stream_, directive_);
 
             double degrees = 0.0;
-            if (line_stream_ >> start_point.position.x >> start_point.position.y >> degrees)
+            if (line_stream_ >> start_point.position.x >> start_point.position.y >> start_point.rotation)
             {
-                start_point.rotation = Rotation<double>::degrees(degrees);
-
                 track_.append_start_point(start_point);
             }
         }

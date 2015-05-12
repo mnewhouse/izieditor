@@ -1014,6 +1014,9 @@
    </property>
   </action>
   <action name="actionLayer_Properties">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset resource="icons.qrc">
      <normaloff>:/Icons/resources/property-blue.png</normaloff>:/Icons/resources/property-blue.png</iconset>
@@ -1023,6 +1026,9 @@
    </property>
   </action>
   <action name="actionMerge_Down">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset resource="icons.qrc">
      <normaloff>:/Icons/resources/layers-group.png</normaloff>:/Icons/resources/layers-group.png</iconset>

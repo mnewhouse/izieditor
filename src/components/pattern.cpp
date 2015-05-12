@@ -351,9 +351,9 @@ namespace components
         for (std::uint32_t terrain_id = 0; terrain_id != 256; ++terrain_id)
         {
             const auto& terrain = terrain_library.terrain_by_id(terrain_id);
-            palette[terrain_id].red = terrain.color.red;
-            palette[terrain_id].green = terrain.color.green;
-            palette[terrain_id].blue = terrain.color.blue;
+            palette[terrain_id].red = terrain.red;
+            palette[terrain_id].green = terrain.green;
+            palette[terrain_id].blue = terrain.blue;
         }
 
         return palette;

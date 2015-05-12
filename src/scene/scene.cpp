@@ -205,10 +205,16 @@ namespace scene
         if (auto layer = track_.layer_by_id(layer_id))
         {
             auto& tile = layer->tiles[tile_id];
-            tile.rotation += rotation_delta;
+            
+            auto rotation = core::Rotation<double>::degrees(tile.rotation);
+            rotation += rotation_delta;
 
-            auto offset = core::transform_point(tile.position - origin, rotation_delta);
-            tile.position = origin + offset;
+            tile.rotation = static_cast<std::int32_t>(std::round(rotation.degrees()));
+
+            core::Vector2<double> position = tile.position;
+            auto offset = core::transform_point(position - origin, rotation_delta);
+            tile.position.x = static_cast<std::int32_t>(std::round(origin.x + offset.x));
+            tile.position.y = static_cast<std::int32_t>(std::round(origin.y + offset.y));
 
             rebuild_tile_vertices(track_display_[layer_id], tile_id, tile);
         }

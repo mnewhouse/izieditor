@@ -42,7 +42,7 @@ void components::fill_area(const TileGroupDefinition& tile_group, const TileLibr
     auto box = tile_group_bounding_box(tile_group, tile_library);
 
     std::uniform_real_distribution<double> offset_dist(-properties.position_jitter, properties.position_jitter);
-    std::uniform_real_distribution<double> rotation_dist(0.0, 359.0);
+    std::uniform_int_distribution<std::int32_t> rotation_dist(0, 359);
 
     double density_multiplier = 1.0 / std::max(properties.density, 0.1);
     const auto& area = properties.area;
@@ -56,8 +56,9 @@ void components::fill_area(const TileGroupDefinition& tile_group, const TileLibr
     core::DoubleRect transformed_area(area.left, area.top, area.width, area.height);  
     if (!properties.randomize_rotation)
     {
-        sin = std::sin(properties.rotation.radians());
-        cos = std::cos(properties.rotation.radians());
+        auto rotation = core::Rotation<double>::degrees(properties.rotation);
+        sin = std::sin(rotation.radians());
+        cos = std::cos(rotation.radians());
 
         transformed_area = core::transform_rect(transformed_area, -sin, cos);
     }
@@ -73,14 +74,13 @@ void components::fill_area(const TileGroupDefinition& tile_group, const TileLibr
 
             Tile tile;
             tile.id = tile_group.id();
-            tile.position.x = position.x + center_x + offset_dist(rng) * box.width;
-            tile.position.y = position.y + center_y + offset_dist(rng) * box.height;
+            tile.position.x = static_cast<std::int32_t>(std::round(position.x + center_x + offset_dist(rng) * box.width));
+            tile.position.y = static_cast<std::int32_t>(std::round(position.y + center_y + offset_dist(rng) * box.height));
 
             tile.rotation = properties.rotation;
             if (properties.randomize_rotation)
             {
-                double deg = rotation_dist(rng);
-                tile.rotation = core::Rotation<double>::degrees(deg);
+                tile.rotation = rotation_dist(rng);
             }
 
             if (contains(area, tile.position))
@@ -92,11 +92,13 @@ void components::fill_area(const TileGroupDefinition& tile_group, const TileLibr
 }
 
 template <typename OutIt>
-void components::generate_default_start_points(const ControlPoint& finish_line, core::Rotation<double> direction,
+void components::generate_default_start_points(const ControlPoint& finish_line, std::int32_t direction,
                                                std::size_t num_points, OutIt out)
 {
-    double sin = std::sin(direction.radians());
-    double cos = std::cos(direction.radians());
+    auto direction_rotation = core::Rotation<double>::degrees(direction);
+
+    double sin = std::sin(direction_rotation.radians());
+    double cos = std::cos(direction_rotation.radians());
 
     core::Vector2<double> center = finish_line.start;
     if (finish_line.direction == ControlPoint::Horizontal) center.x += finish_line.length * 0.5;

@@ -23,43 +23,21 @@
 * SOFTWARE.
 */
 
-#ifndef COMPONENT_ALGORITHMS_HPP
-#define COMPONENT_ALGORITHMS_HPP
+#ifndef TRACK_HASH_HPP
+#define TRACK_HASH_HPP
 
+#include <array>
 #include <cstdint>
-
-#include "core/rect.hpp"
-#include "core/rotation.hpp"
-
-#include "tile_library.hpp"
-#include "tile_definition.hpp"
-
-#include "start_point.hpp"
-#include "control_point.hpp"
 
 namespace components
 {
-    struct FillProperties
-    {
-        core::IntRect area;
-        std::int32_t rotation;
-        bool randomize_rotation = false;
-        
-        double position_jitter = 0.0;
-        double density = 1.0;
-    };
+    class Track;
+    class Pattern;
 
-    template <typename RNG, typename OutIt>
-    void fill_area(const TileGroupDefinition& tile_group, const TileLibrary& tile_library, 
-        const FillProperties& properties, RNG&& rng, OutIt out);
+    using TrackHash = std::array<std::uint32_t, 4>;
 
-    core::IntRect tile_group_bounding_box(const TileGroupDefinition& tile_group, const TileLibrary& tile_library);
-
-    template <typename OutIt>
-    void generate_default_start_points(const ControlPoint& finish_line, std::int32_t start_direction,
-                                       std::size_t num_points, OutIt out);
+    TrackHash calculate_track_hash(const Track& track);
+    TrackHash calculate_track_hash(const Track& track, const Pattern& pattern);
 }
-
-#include "component_algorithms.inl"
 
 #endif

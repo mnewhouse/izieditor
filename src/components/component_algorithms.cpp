@@ -45,7 +45,9 @@ namespace components
 
                 core::Rect<double> sub_rect(0.0, 0.0, 
                     static_cast<double>(pat_rect.width), static_cast<double>(pat_rect.height));
-                core::Rect<double> transformed_rect = core::transform_rect(sub_rect, sub_tile.rotation);
+
+                auto rotation = core::Rotation<double>::degrees(sub_tile.rotation);
+                core::Rect<double> transformed_rect = core::transform_rect(sub_rect, rotation);
 
                 core::IntRect int_rect(
                     static_cast<std::int32_t>(sub_tile.position.x - transformed_rect.width * 0.5),

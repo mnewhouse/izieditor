@@ -23,43 +23,18 @@
 * SOFTWARE.
 */
 
-#ifndef COMPONENT_ALGORITHMS_HPP
-#define COMPONENT_ALGORITHMS_HPP
+#ifndef CLAMP_HPP
+#define CLAMP_HPP
 
-#include <cstdint>
+#include <algorithm>
 
-#include "core/rect.hpp"
-#include "core/rotation.hpp"
-
-#include "tile_library.hpp"
-#include "tile_definition.hpp"
-
-#include "start_point.hpp"
-#include "control_point.hpp"
-
-namespace components
+namespace core
 {
-    struct FillProperties
+    template <typename T>
+    T clamp(T value, T min, T max)
     {
-        core::IntRect area;
-        std::int32_t rotation;
-        bool randomize_rotation = false;
-        
-        double position_jitter = 0.0;
-        double density = 1.0;
+        return std::min(std::max(value, min), max);
     };
-
-    template <typename RNG, typename OutIt>
-    void fill_area(const TileGroupDefinition& tile_group, const TileLibrary& tile_library, 
-        const FillProperties& properties, RNG&& rng, OutIt out);
-
-    core::IntRect tile_group_bounding_box(const TileGroupDefinition& tile_group, const TileLibrary& tile_library);
-
-    template <typename OutIt>
-    void generate_default_start_points(const ControlPoint& finish_line, std::int32_t start_direction,
-                                       std::size_t num_points, OutIt out);
 }
-
-#include "component_algorithms.inl"
 
 #endif

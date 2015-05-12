@@ -90,7 +90,7 @@ void PatternMode::initiate_pattern_building()
             {
                 const auto& terrain = terrain_library.terrain_by_id(pattern(x, y));
 
-                sf::Color color(terrain.color.red, terrain.color.green, terrain.color.blue);
+                sf::Color color(terrain.red, terrain.green, terrain.blue);
                 image.setPixel(x, y, color);
             }
         }

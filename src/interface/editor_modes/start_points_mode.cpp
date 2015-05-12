@@ -76,7 +76,7 @@ void StartPointsMode::render(sf::RenderTarget& render_target, sf::RenderStates r
 
     for (const auto& point : start_points_)
     {
-        line_shape.setRotation(point.rotation.degrees());
+        line_shape.setRotation(static_cast<float>(point.rotation));
         line_shape.setPosition(point.position.x, point.position.y);
         point_shape.setPosition(point.position.x, point.position.y);
 
@@ -125,7 +125,6 @@ std::uint32_t StartPointsMode::enabled_tools() const
 {
     return EditorTool::Placement | 0U;
 }
-
 void StartPointsMode::tool_changed(EditorTool tool)
 {
     start_point_position_ = boost::none;
@@ -141,16 +140,17 @@ void StartPointsMode::place_start_point(core::Vector2i position, core::Vector2i 
         double y_offset = face_towards.y - static_cast<double>(position.y);
 
         double radians = std::atan2(y_offset, x_offset);
+        auto rotation = core::Rotation<double>::radians(radians);
 
         using components::StartPoint;
         StartPoint point{};
         point.position = position;
-        point.rotation = core::Rotation<double>::radians(radians);
+        point.rotation = static_cast<std::int32_t>(std::round(rotation.degrees()));
 
         if (fix_rotation)
         {
-            double degrees = std::round(point.rotation.degrees() / 22.5) * 22.5;
-            point.rotation = core::Rotation<double>::degrees(degrees);
+            double degrees = std::round(rotation.degrees() / 22.5) * 22.5;
+            point.rotation = static_cast<std::int32_t>(std::round(degrees));
         }
 
         auto command = [=]()

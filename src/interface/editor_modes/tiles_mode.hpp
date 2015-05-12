@@ -88,7 +88,7 @@ struct TilesMode
     void delete_last_tile();
     void cut_selection();
     void copy_selection();
-    void paste_clipboard(core::Vector2<double> position);
+    void paste_clipboard(core::Vector2i position);
 
     void move_selected_tiles(core::Vector2i offset, bool fix_position = false);
     void commit_tile_movement();

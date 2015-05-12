@@ -109,7 +109,9 @@ namespace components
 
         const std::vector<StartPoint>& start_points() const;
         const std::vector<ControlPoint>& control_points() const;
-        core::Rotation<double> start_direction() const;
+
+        bool is_start_direction_overridden() const;
+        std::int32_t start_direction() const;
 
         void define_pit(core::IntRect pit);
         void undefine_pit();

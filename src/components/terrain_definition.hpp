@@ -35,29 +35,32 @@ namespace components
 {
     using TerrainId = std::uint8_t;
 
-    struct TerrainColor
-    {
-        std::uint8_t red = 150;
-        std::uint8_t green = 150;
-        std::uint8_t blue = 150;
-    };
-
     struct TerrainDefinition
     {
-        TerrainId id = 0;
+        TerrainId id = 0;       
 
         double acceleration = 1.0;
         double steering = 1.0;
         double grip = 1.0;
         double viscosity = 1.0;
-        double braking = 1.0;
+        double braking = 1.0;        
+        double bounciness = 1.0;
+        double slowing = 0.0;
+        double jump = 0.0;
+        double maxjumpspeed = 140.0;
 
-        bool tire_mark = true;
+        std::int32_t energyloss = 0;
+        std::int32_t gravity = 0;
+        std::int32_t gravitydirection = 90;
+        std::int32_t size = 1;
+        std::int32_t red = 150;
+        std::int32_t green = 150;
+        std::int32_t blue = 150;
+
+        bool tyre_mark = false;
         bool skid_mark = false;
-        bool is_wall = true;
-
-        WallDefinition wall;            
-        TerrainColor color;
+        bool is_wall = false;
+        bool pit = false;
     };
 
     struct SubTerrain

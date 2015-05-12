@@ -344,6 +344,8 @@ namespace interface
             select_layer(track().layers().front().id());
         }
 
+        impl_->tiles_mode_.goto_tile(0);
+
         impl_->select_area({});        
 
         show();        

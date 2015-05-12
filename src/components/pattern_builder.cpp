@@ -39,11 +39,11 @@
 
 namespace components
 {
-    void apply_pattern(Pattern& dest, const Pattern& source, core::IntRect rect, core::Vector2<double> position, Rotation<double> rotation);
+    void apply_pattern(Pattern& dest, const Pattern& source, core::IntRect rect, core::Vector2i position, std::int32_t rotation);
 
     PatternBuilder::PatternBuilder(const Track& track, PatternStore pattern_store)
         : track_(track),
-          pattern_store_(pattern_store)
+        pattern_store_(pattern_store)
     {
     }
 
@@ -80,146 +80,141 @@ namespace components
     }
 
     void apply_pattern(Pattern& dest, const Pattern& source,
-        core::IntRect rect, core::Vector2<double> position, Rotation<double> rotation)
+        core::IntRect rect, core::Vector2i position, std::int32_t rotation)
     {
-        double sangle = -std::sin(rotation.radians());
-        double cangle = std::cos(rotation.radians());
+        double radians = core::Rotation<double>::degrees(rotation).radians();
+
+        double sin = -std::sin(radians);
+        double cos = std::cos(radians);
 
         core::Vector2i world_size = dest.size();
         core::Vector2i pattern_size = source.size();
         core::Vector2i source_size(rect.width, rect.height);
 
+        /*
         auto dest_size = [=]()
         {
-            auto x = double(source_size.x >> 1);
-            auto y = double(source_size.y >> 1);
+        double x = source_size.x * 0.5;
+        double y = source_size.y * 0.5;
 
-            auto cx = x * cangle;
-            auto cy = y * cangle;
-            auto sx = x * sangle;
-            auto sy = y * sangle;
+        double cx = x * cangle;
+        double cy = y * cangle;
+        double sx = x * sangle;
+        double sy = y * sangle;
 
-            auto width = std::ceil(std::abs(cx) + std::abs(sy));
-            auto height = std::ceil(std::abs(cy) + std::abs(sx));
+        double w = (std::abs(cx) + std::abs(sy)) * 2.0;
+        double h = (std::abs(cy) + std::abs(sx)) * 2.0;
 
-            return core::Vector2i(std::int32_t(width) << 1, std::int32_t(height) << 1);
+        double width = std::ceil(w);
+        double height = std::ceil(h);
+
+        return core::Vector2i(static_cast<std::int32_t>(width), static_cast<std::int32_t>(height));
         }();
 
-        auto isin = std::int32_t(65536.0 * sangle);
-        auto icos = std::int32_t(65536.0 * cangle);
+        std::int32_t isin = 65536.0 * sangle;
+        std::int32_t icos = 65536.0 * cangle;
 
-        std::int32_t cx = dest_size.x >> 1;
-        std::int32_t cy = dest_size.y >> 1;
-
-        core::Vector2i int_pos(static_cast<std::int32_t>(position.x + 0.5), static_cast<std::int32_t>(position.y + 0.5));
+        std::int32_t cx = dest_size.x / 2;
+        std::int32_t cy = dest_size.y / 2;
 
         std::int32_t xd = (source_size.x - dest_size.x) << 15;
         std::int32_t yd = (source_size.y - dest_size.y) << 15;
+
         std::int32_t ax = (cx << 16) - (icos * cx);
         std::int32_t ay = (cy << 16) - (isin * cx);
 
-        std::int32_t base_x = int_pos.x - cx;
-        std::int32_t base_y = int_pos.y - cy;
-
-        std::int32_t start_x = std::min(std::max(base_x, 0), world_size.x);
-        std::int32_t start_y = std::min(std::max(base_y, 0), world_size.y);
-
-        std::int32_t end_x = std::min(std::max(base_x + dest_size.x + 1, 0), world_size.x);
-        std::int32_t end_y = std::min(std::max(base_y + dest_size.y + 1, 0), world_size.y);
+        std::int32_t base_x = position.x - cx;
+        std::int32_t base_y = position.y - cy;
 
         if (rect.right() >= pattern_size.x) rect.width = pattern_size.x - rect.left;
         if (rect.bottom() >= pattern_size.y) rect.height = pattern_size.y - rect.top;
 
-        for (std::int32_t dest_y = start_y, y = dest_y - base_y; dest_y != end_y; ++y, ++dest_y)
+        for (std::int32_t y = -1; y <= dest_size.y; ++y)
         {
-            std::int32_t sdx = (ax + (isin * (cy - y))) + xd + 0x8000;
-            std::int32_t sdy = (ay - (icos * (cy - y))) + yd + 0x8000;
+        std::int32_t dest_y = y + base_y;
+        if (dest_y < 0 || dest_y >= world_size.y) continue;
 
-            // Get the range in which (0 <= source_x < rect.width AND 0 <= source_y < rect.height)
+        std::int32_t sdx = (ax + (isin * (cy - y))) + 0x8000 + xd;
+        std::int32_t sdy = (ay - (icos * (cy - y))) + 0x8000 + yd;
 
-            auto determine_range = [](std::int32_t base_value, std::int32_t multiplier, std::int32_t min, std::int32_t max)
-                -> std::pair < std::int32_t, std::int32_t >
+        // cy ->
+        // sdx, sdy -> too high
+
+        for (std::int32_t x = -1; x <= dest_size.x; ++x, sdx += icos, sdy += isin)
+        {
+        std::int32_t dest_x = x + base_x;
+        if (dest_x < 0 || dest_x >= world_size.x) continue;
+
+        std::int32_t source_x = (sdx >> 16);
+        std::int32_t source_y = (sdy >> 16);
+
+        if (source_x >= 0 && source_y >= 0 && source_x < rect.width && source_y < rect.height)
+        {
+        if (auto terrain = source(source_x + rect.left, source_y + rect.top))
+        {
+        dest(dest_x, dest_y) = terrain;
+        }
+        }
+        }
+        }
+        */
+
+        core::Vector2<double> dest_size;
+        {
+            double x = source_size.x * 0.5;
+            double y = source_size.y * 0.5;
+
+            double cx = x * cos;
+            double cy = y * cos;
+            double sx = x * sin;
+            double sy = y * sin;
+
+            double half_width = std::abs(cx) + std::abs(sy);
+            double half_height = std::abs(cy) + std::abs(sx);
+
+            dest_size = { std::ceil(half_width * 2.0), std::ceil(half_height * 2.0) };
+        }
+
+        core::Vector2<double> source_center(source_size.x * 0.5, source_size.y * 0.5);
+        core::Vector2<double> real_position = position;
+
+        if (rect.right() > pattern_size.x) rect.width = pattern_size.x - rect.left;
+        if (rect.bottom() > pattern_size.y) rect.height = pattern_size.y - rect.top;
+
+        std::int32_t start_x = (source_size.x - dest_size.x) / 2 - 1;
+        std::int32_t start_y = (source_size.y - dest_size.y) / 2 - 1;
+
+        std::int32_t end_x = start_x + dest_size.x + 2;
+        std::int32_t end_y = start_y + dest_size.y + 2;
+
+        std::int32_t offset_x = position.x - source_size.x / 2;
+        std::int32_t offset_y = position.y - source_size.y / 2;
+
+        for (std::int32_t y = start_y; y < end_y; ++y)
+        {
+            for (std::int32_t x = start_x; x < end_x; ++x)
             {
-                if (multiplier == 0)
+                core::Vector2<double> point(x, y);
+                point -= source_center;
+                
+                std::int32_t absolute_x = x + offset_x;
+                std::int32_t absolute_y = y + offset_y;
+
+                if (absolute_x >= 0 && absolute_y >= 0 && absolute_x < world_size.x && absolute_y < world_size.y)
                 {
-                    auto value = base_value >> 16;
-                    if (value < min || value >= max) return std::make_pair(0, 0); // Empty range
+                    core::Vector2<double> source_point = core::transform_point(point, sin, cos);
+                    source_point += source_center;
 
-                    // Infinite range
-                    return std::make_pair(std::numeric_limits<std::int32_t>::min(),
-                        std::numeric_limits<std::int32_t>::max());
-                }
+                    auto source_x = static_cast<std::int32_t>(std::round(source_point.x));
+                    auto source_y = static_cast<std::int32_t>(std::round(source_point.y));
 
-                auto equal_range = [multiplier, base_value](std::int32_t value)
-                {
-                    auto target_values = std::make_pair((value << 16) - base_value,
-                        ((value << 16) + 0xFFFF) - base_value);
-
-                    auto div = std::make_pair(std::div(target_values.first, multiplier),
-                        std::div(target_values.second, multiplier));
-
-                    if (div.first.rem != 0 && target_values.first > 0)
+                    if (source_x >= 0 && source_y >= 0 && source_x < rect.width && source_y < rect.height)
                     {
-                        div.first.quot += (multiplier < 0 ? -1 : 1);
+                        if (auto terrain = source(source_x + rect.left, source_y + rect.top))
+                        {
+                            dest(absolute_x, absolute_y) = terrain;
+                        }
                     }
-
-                    if (div.second.rem != 0 && target_values.second < 0)
-                    {
-                        div.second.quot += (multiplier < 0 ? 1 : -1);
-                    }
-
-                    if (div.first.quot > div.second.quot)
-                    {
-                        std::swap(div.first.quot, div.second.quot);
-                    }
-
-                    return std::make_pair(div.first.quot, div.second.quot);
-                };
-
-                auto min_range = equal_range(min);
-                auto max_range = equal_range(max);
-
-                auto begin = min_range.first;
-                auto end = max_range.first;
-
-                if (begin > end)
-                {
-                    begin = max_range.second + 1;
-                    end = min_range.second + 1;
-                }
-
-                return std::make_pair(begin, end);
-            };
-
-            auto x_range = determine_range(sdx, icos, 0, rect.width);
-            auto y_range = determine_range(sdy, isin, 0, rect.height);
-
-            // Get the overlap of the ranges
-            auto overlap_range = std::make_pair(std::max(x_range.first, y_range.first),
-                std::min(x_range.second, y_range.second));
-
-            auto range = std::make_pair(std::max(overlap_range.first + base_x, start_x),
-                std::min(overlap_range.second + base_x, end_x));
-
-            range.second = std::max(range.first, range.second);
-
-            auto row_begin = dest.row_begin(dest_y);
-            auto dest_start = row_begin + range.first;
-            auto dest_end = row_begin + range.second;
-
-            auto skipped = range.first - base_x;
-            sdx += skipped * icos;
-            sdy += skipped * isin;
-
-            // Loop invariant: 0 <= source_x < rect.width && 0 <= source_y < rect.height
-            for (auto dest_ptr = dest_start; dest_ptr != dest_end; ++dest_ptr, sdx += icos, sdy += isin)
-            {
-                std::int32_t source_x = sdx >> 16;
-                std::int32_t source_y = sdy >> 16;
-
-                if (auto terrain = source(source_x + rect.left, source_y + rect.top))
-                {
-                    *dest_ptr = terrain;
                 }
             }
         }

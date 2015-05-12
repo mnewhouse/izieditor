@@ -46,8 +46,10 @@ namespace scene
         const core::IntRect image_rect = tile_def->image_rect;
         const core::IntRect pattern_rect = tile_def->pattern_rect;  
 
-        auto cos = std::cos(tile.rotation.radians());
-        auto sin = std::sin(tile.rotation.radians());
+        auto rotation = core::Rotation<double>::degrees(tile.rotation);
+
+        auto cos = std::cos(rotation.radians());
+        auto sin = std::sin(rotation.radians());
 
         const auto& texture_rect = placement.texture_rect;
         const auto& tile_rect = placement.tile_rect;

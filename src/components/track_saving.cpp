@@ -26,13 +26,17 @@
 #include "track_saving.hpp"
 #include "track.hpp"
 
+#include "terrain_library.hpp"
+
 #include "control_point.hpp"
 #include "start_point.hpp"
 
 #include "pattern_store.hpp"
 #include "pattern_builder.hpp"
 
-#include <boost/filesystem/path.hpp>
+#include "track_hash.hpp"
+
+#include <boost/filesystem.hpp>
 
 #include <fstream>
 
@@ -48,16 +52,12 @@ namespace components
         save_track(track, pattern_store, track.path());
     }
 
-    void save_track_pattern(const Track& track, const PatternStore& pattern_store, const std::string& file_name)
-    {
-        PatternBuilder pattern_builder(track, pattern_store);
-
-        auto pattern = pattern_builder();
-        save_pattern(pattern, track.terrain_library(), file_name);
-    }
-
     void save_track(const Track& track, const PatternStore& pattern_store, const std::string& file_name)
     {
+        namespace bfs = boost::filesystem;
+        bfs::path path = bfs::path(file_name).parent_path();
+        bfs::create_directories(path);
+
         std::ofstream out(file_name);
 
         if (!out)
@@ -65,22 +65,30 @@ namespace components
             throw SaveError(file_name);
         }
 
+
+        PatternBuilder pattern_builder(track, pattern_store);
+        auto pattern = pattern_builder();
+
         out << "# This is a Turbo Sliders track file\n";
         out << "# Do not change the order of the following lines!\n";
         out << "# This track was saved with IziEditor.\n";
 
         auto track_size = track.size();
         out << "Size td " << track.num_levels() << " " << track_size.x << " " << track_size.y << "\n";
-        out << "Hash 0 0 0 0\n"; // TODO
+
+        auto track_hash = calculate_track_hash(track, pattern);
+        out << "Hash " << std::hex << track_hash[0] << " " << track_hash[1] << " " << 
+            track_hash[2] << " " << track_hash[3] << std::dec << "\n";
+
         out << "Maker " << (track.author().empty() ? "Anonymous" : track.author()) << "\n";
         out << "FormatVersion 2\n";
 
-        auto pattern = track.pattern();
-        if (pattern.empty())
+        auto pattern_file = track.pattern();
+        if (pattern_file.empty())
         {
-            pattern = track.name() + "-pat.png";
+            pattern_file = track.name() + "-pat.png";
         }
-        out << "Pattern " << pattern << "\n";
+        out << "Pattern " << pattern_file << "\n";
 
         for (const auto& asset : track.assets())
         {
@@ -110,8 +118,7 @@ namespace components
 
             for (const auto& point : start_points)
             {
-                auto degrees = static_cast<std::int32_t>(point.rotation.degrees(core::rotation::absolute));
-                out << "  Point " << point.position.x << " " << point.position.y << " " << degrees << "\n";
+                out << "  Point " << point.position.x << " " << point.position.y << " " << point.rotation << "\n";
             }
 
             out << "End\n";
@@ -122,9 +129,9 @@ namespace components
             out << "Layer " << layer->level << " " << static_cast<int>(layer->visible) << " " << layer->name << "\n";
             for (const auto& tile : layer->tiles)
             {
-                int x = static_cast<int>(tile.position.x);
-                int y = static_cast<int>(tile.position.y);
-                int rotation = static_cast<int>(tile.rotation.degrees(core::rotation::absolute));
+                std::int32_t x = tile.position.x;
+                std::int32_t y = tile.position.y;
+                std::int32_t rotation = tile.rotation;
 
                 if (layer->level == 0)
                 {
@@ -140,8 +147,7 @@ namespace components
 
         out << "End\n";
         
-        boost::filesystem::path pattern_path = track.path();
-        pattern_path = pattern_path.parent_path() / pattern;
-        save_track_pattern(track, pattern_store, pattern_path.string());
+        bfs::path pattern_path = path / pattern_file;
+        save_pattern(pattern, track.terrain_library(), pattern_path.string());
     }
 }

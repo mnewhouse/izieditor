@@ -47,14 +47,20 @@ namespace components
                 const auto* tile_def = tile_library.tile(sub_tile.id);
                 if (!tile_def) continue;
 
-                auto sub_tile_offset = core::transform_point(sub_tile.position, tile_it->rotation);
+                core::Rotation<double> tile_rotation = core::Rotation<double>::degrees(tile_it->rotation);
+                core::Rotation<double> sub_tile_rotation = core::Rotation<double>::degrees(sub_tile.rotation);
+                core::Rotation<double> final_rotation = tile_rotation + sub_tile_rotation;
+
+                core::Vector2<double> sub_tile_offset = core::transform_point(sub_tile.position, tile_rotation);
 
                 PlacedTile placed_tile;
                 placed_tile.tile_def = tile_def;
                 placed_tile.tile.id = sub_tile.id;
                 placed_tile.tile.level = sub_tile.level;
-                placed_tile.tile.position = tile_it->position + sub_tile_offset;
-                placed_tile.tile.rotation = tile_it->rotation + sub_tile.rotation;
+                placed_tile.tile.position = tile_it->position;
+                placed_tile.tile.position.x += static_cast<std::int32_t>(std::round(sub_tile_offset.x));
+                placed_tile.tile.position.y += static_cast<std::int32_t>(std::round(sub_tile_offset.y));
+                placed_tile.tile.rotation = static_cast<std::int32_t>(std::round(final_rotation.degrees()));
 
                 *out = placed_tile;
                 ++out;

@@ -27,6 +27,8 @@
 
 #include "interface/main_window.hpp"
 
+#include <fstream>
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);

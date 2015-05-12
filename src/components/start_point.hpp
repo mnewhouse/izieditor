@@ -24,13 +24,15 @@
 #include "core/rotation.hpp"
 
 #include <cstddef>
+#include <cstdint>
 
 namespace components
 {
     struct StartPoint
     {
-        core::Vector2<double> position;
-        core::Rotation<double> rotation;
+        core::Vector2i position;
+        std::int32_t rotation;
+        std::uint32_t level;
     };
 }
 #endif

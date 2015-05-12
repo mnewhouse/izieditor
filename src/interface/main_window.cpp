@@ -656,11 +656,11 @@ namespace interface
             tool_info_label_->setText(text);
 
             QString secondary_text = "x=";
-            secondary_text += QString::number(static_cast<int>(tile->position.x));
+            secondary_text += QString::number(tile->position.x);
             secondary_text += " y=";
-            secondary_text += QString::number(static_cast<int>(tile->position.y));
+            secondary_text += QString::number(tile->position.y);
             secondary_text += " r=";
-            secondary_text += QString::number(static_cast<int>(tile->rotation.degrees(core::rotation::absolute)));
+            secondary_text += QString::number(tile->rotation);
             secondary_text += L'°';
             secondary_tool_info_label_->setText(secondary_text);
         }

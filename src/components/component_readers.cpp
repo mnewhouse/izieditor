@@ -37,14 +37,7 @@ namespace components
 {
     std::istream& readers::operator>>(std::istream& stream, Tile& tile)
     {
-        double rotation{};
-
-        if (stream >> tile.id >> tile.position.x >> tile.position.y >> rotation)
-        {
-            tile.rotation = core::Rotation<double>::degrees(rotation);
-        }
-
-        return stream;
+        return stream >> tile.id >> tile.position.x >> tile.position.y >> tile.rotation;
     }
 
     std::istream& readers::operator>>(std::istream& stream, LevelTile& tile)
@@ -111,7 +104,51 @@ namespace components
 
             else if (directive == "bounciness")
             {
-                line_stream >> terrain_def.wall.elasticity;
+                line_stream >> terrain_def.bounciness;
+            }
+
+            else if (directive == "slowing")
+            {
+                line_stream >> terrain_def.slowing;
+            }
+
+            else if (directive == "jump")
+            {
+                line_stream >> terrain_def.jump;
+            }
+
+            else if (directive == "maxjumpspeed")
+            {
+                line_stream >> terrain_def.maxjumpspeed;
+            }
+
+            else if (directive == "energyloss")
+            {
+                line_stream >> terrain_def.energyloss;
+            }
+
+            else if (directive == "gravity")
+            {
+                line_stream >> terrain_def.gravity;
+            }
+
+            else if (directive == "gravitydirection")
+            {
+                line_stream >> terrain_def.gravitydirection;
+            }
+
+            else if (directive == "size")
+            {
+                line_stream >> terrain_def.size;
+            }
+
+            else if (directive == "pit")
+            {
+                std::int32_t value;
+                if (line_stream >> value)
+                {
+                    terrain_def.pit = (value != 0);
+                }
             }
 
             else if (directive == "red")
@@ -119,7 +156,7 @@ namespace components
                 std::uint32_t value;
                 if (line_stream >> value)
                 {
-                    terrain_def.color.red = value;
+                    terrain_def.red = value;
                 }
             }
 
@@ -128,7 +165,7 @@ namespace components
                 std::uint32_t value;
                 if (line_stream >> value)
                 {
-                    terrain_def.color.green = value;
+                    terrain_def.green = value;
                 }
             }
 
@@ -137,16 +174,16 @@ namespace components
                 std::uint32_t value;
                 if (line_stream >> value)
                 {
-                    terrain_def.color.blue = value;
+                    terrain_def.blue = value;
                 }
             }
 
-            else if (directive == "tiremark")
+            else if (directive == "tyremark")
             {
                 std::uint32_t value;
                 if (line_stream >> value)
                 {
-                    terrain_def.tire_mark = (value != 0);
+                    terrain_def.tyre_mark = (value != 0);
                 }
             }
 

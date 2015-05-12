@@ -45,8 +45,8 @@ namespace components
     struct Tile
     {
         TileId id = 0;
-        core::Vector2<double> position;
-        core::Rotation<double> rotation;
+        core::Vector2i position;
+        std::int32_t rotation;
     };
 
     struct LevelTile
