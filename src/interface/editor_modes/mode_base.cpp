@@ -64,14 +64,14 @@ namespace interface
         conditional_enable(EditorTool::Rotation);
         conditional_enable(EditorTool::TileSelection);
         conditional_enable(EditorTool::AreaSelection);
+        conditional_enable(EditorTool::Resize);
 
         on_activate();
     }
 
     std::uint32_t ModeBase::enabled_tools() const
     {
-        return EditorTool::Placement | EditorTool::TileSelection | EditorTool::AreaSelection |
-            EditorTool::Movement | EditorTool::Rotation;
+        return static_cast<std::uint32_t>(EditorTool::All);
     }
 
     void ModeBase::customize_cursor()
@@ -95,6 +95,11 @@ namespace interface
         else if (tool == EditorTool::TileSelection)
         {
             canvas()->set_active_cursor(EditorCursor::MagicWand);
+        }
+
+        else if (tool == EditorTool::Resize)
+        {
+            canvas()->set_active_cursor(EditorCursor::Resize);
         }
     }
 

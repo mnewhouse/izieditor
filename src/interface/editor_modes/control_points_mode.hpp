@@ -28,6 +28,8 @@
 
 #include "mode_base.hpp"
 
+#include "components/control_point.hpp"
+
 #include "core/vector2.hpp"
 
 #include <SFML/Graphics.hpp>
@@ -55,8 +57,12 @@ struct ControlPointsMode
         const graphics::FontBitmap& font_bitmap);
 
     void delete_last_control_point();
+    void delete_selected_control_point();
 
-    void mouse_press_event(QMouseEvent* event);
+    virtual void mouse_press_event(QMouseEvent* event) override;
+    virtual void mouse_release_event(QMouseEvent* event) override;
+
+    virtual void mouse_move_event(QMouseEvent* event, core::Vector2i track_point, core::Vector2i track_delta) override;
 
     virtual void tool_changed(EditorTool tool) override;
 
@@ -65,9 +71,25 @@ private:
     virtual void on_activate() override;
 
     void place_control_point(core::Vector2i start, core::Vector2i end);
+    void resize_control_point(std::size_t index, core::Vector2i offset);
+
+    void commit_control_point_movement(std::size_t index, core::Vector2i offset);
+    void commit_control_point_resize(std::size_t index, core::Vector2i offset);
+
+    void select_control_point(std::size_t index);
+    void deselect_control_point();
+
+    void update_control_point_info();
+    void update_control_point_info(std::size_t index);
 
     boost::optional<core::Vector2i> control_point_start_;
+    boost::optional<std::size_t> selected_control_point_index_;
+    boost::optional<std::size_t> hovered_control_point_index_;
+
+    core::Vector2i control_point_offset_;
     std::vector<sf::Vertex> vertex_cache_;
+
+    components::ControlPoint old_point_state_;
 };
 
 NAMESPACE_INTERFACE_MODES_END

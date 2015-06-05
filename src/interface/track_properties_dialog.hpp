@@ -23,46 +23,46 @@
 * SOFTWARE.
 */
 
-#ifndef PIT_MODE_HPP
-#define PIT_MODE_HPP
+#ifndef TRACK_PROPERTIES_DIALOG_HPP
+#define TRACK_PROPERTIES_DIALOG_HPP
 
-#include "mode_base.hpp"
+#include "ui_track_properties_dialog.h"
 
-#include "core/vector2.hpp"
-#include "core/rect.hpp"
-
-#include <qevent.h>
-
-#include <SFML/Graphics.hpp>
-
-#include <boost/optional.hpp>
-
-#include <cstdint>
-
-NAMESPACE_INTERFACE_MODES
-
-struct PitMode
-    : ModeBase
+namespace components
 {
-public:
-    PitMode(EditorCanvas* canvas);
+    class Track;
+}
 
-    void render(sf::RenderTarget& render_target, sf::RenderStates render_states);
-    void mouse_press_event(QMouseEvent* event);
+namespace interface
+{
+    struct TrackProperties;
 
-    void define_pit(core::Vector2i start, core::Vector2i end);
-    void undefine_pit();
+    class TrackPropertiesDialog
+        : public QDialog
+    {
+        Q_OBJECT
 
-private:
-    void pit_defined(core::IntRect pit);
-    void pit_undefined();
+    public:
+        TrackPropertiesDialog(QWidget* parent);
 
-    virtual std::uint32_t enabled_tools() const override;
-    virtual void on_activate() override;
+        void show_dialog(const components::Track& track);
 
-    boost::optional<core::Vector2i> pit_start_;
-};
+    signals:
+        void commit_changes(const TrackProperties& track_properties);
 
-NAMESPACE_INTERFACE_MODES_END
+    private slots:
+        void dispatch_commit_signal();
+        void start_direction_override_checkbox_state_changed(int state);
+
+        void gravity_direction_dial_value_changed(int value);
+        void gravity_direction_spinbox_value_changed(int value);
+
+        void start_direction_dial_value_changed(int value);
+        void start_direction_spinbox_value_changed(int value);
+
+    private:
+        Ui::TrackPropertiesDialog ui_;
+    };
+}
 
 #endif

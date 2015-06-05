@@ -122,6 +122,17 @@ namespace interface
         timer_.start(10);
 
         show();
+
+        if (parentWidget())
+        {
+            auto parent_size = parentWidget()->size();
+            auto parent_position = parentWidget()->pos();
+            auto my_size = size();
+
+            int x = parent_position.x() + (parent_size.width() - my_size.width()) / 2;
+            int y = parent_position.y() + (parent_size.height() - my_size.height()) / 2;
+            setGeometry(x, y, my_size.width(), my_size.height());
+        }
     }
 
     void LoadingDialog::create_track(const TrackEssentials& essentials)    
@@ -129,7 +140,6 @@ namespace interface
         auto loading_func = [=]()
         {
             components::TrackLoader track_loader;
-
             for (const QString& asset : essentials.assets)
             {
                 track_loader.include(asset.toStdString());

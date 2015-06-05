@@ -25,6 +25,8 @@
 
 #include "action_history_list.hpp"
 
+#include <memory>
+
 namespace interface
 {
     ActionHistoryList::ActionHistoryList(QWidget* parent)
@@ -49,6 +51,9 @@ namespace interface
 
     void ActionHistoryList::selectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
     {
+        // WOW HACK
+        if (is_updating_) return;
+
         auto selection = selectedIndexes();
         int row_count = model()->rowCount();
 
@@ -108,19 +113,29 @@ namespace interface
 
     void ActionHistoryList::push_action(const Action& action)
     {
-        model()->removeRows(current_index_, actions_.size() - current_index_);
-        addItem(QString::fromStdString(action.description()));
-
-        actions_.resize(current_index_);
-        actions_.push_back(action);
-
-        if (actions_.size() > max_stack_size_)
         {
-            model()->removeRows(0, 1);
-            actions_.pop_front();
-        }
+            is_updating_ = true;
+            auto update_guard_deleter = [](bool* is_updating)
+            {
+                *is_updating = false;
+            };
 
-        current_index_ = actions_.size();
+            std::unique_ptr<bool, decltype(update_guard_deleter)> update_guard(&is_updating_);
+
+            model()->removeRows(current_index_, actions_.size() - current_index_);
+            addItem(QString::fromStdString(action.description()));
+
+            actions_.resize(current_index_);
+            actions_.push_back(action);
+
+            if (actions_.size() > max_stack_size_)
+            {
+                model()->removeRows(0, 1);
+                actions_.pop_front();
+            }
+
+            current_index_ = actions_.size();
+        }
 
         selectionModel()->select(model()->index(current_index_ - 1, 0), QItemSelectionModel::ClearAndSelect);
 

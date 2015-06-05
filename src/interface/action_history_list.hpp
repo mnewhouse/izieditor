@@ -69,6 +69,8 @@ namespace interface
         std::size_t current_index_ = 0;
         std::size_t max_stack_size_ = 50;
         std::deque<Action> actions_;
+
+        bool is_updating_ = false;
     };
 };
 

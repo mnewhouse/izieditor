@@ -26,8 +26,6 @@
 #ifndef TERRAIN_DEFINITION_HPP
 #define TERRAIN_DEFINITION_HPP
 
-#include "wall_definition.hpp"
-
 #include <cstdint>
 #include <istream>
 
@@ -37,7 +35,8 @@ namespace components
 
     struct TerrainDefinition
     {
-        TerrainId id = 0;       
+        std::string name = "Unnamed";
+        TerrainId id = 0;        
 
         double acceleration = 1.0;
         double steering = 1.0;

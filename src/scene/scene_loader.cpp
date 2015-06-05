@@ -62,8 +62,8 @@ namespace scene
         std::unordered_set<std::string> distinct_patterns;
         for (auto tile = tile_library.first_tile(); tile; tile = tile_library.next_tile(tile->id))
         {
-            distinct_images.insert(tile->image_file());
-            distinct_patterns.insert(tile->pattern_file());
+            distinct_images.insert(tile->image_file);
+            distinct_patterns.insert(tile->pattern_file);
         }
 
         loading_progress_ = 0.0;

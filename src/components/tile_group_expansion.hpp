@@ -30,6 +30,8 @@
 
 #include "core/transform.hpp"
 
+#include <iostream>
+
 namespace components
 {
     class TileLibrary;
@@ -47,20 +49,20 @@ namespace components
                 const auto* tile_def = tile_library.tile(sub_tile.id);
                 if (!tile_def) continue;
 
-                core::Rotation<double> tile_rotation = core::Rotation<double>::degrees(tile_it->rotation);
-                core::Rotation<double> sub_tile_rotation = core::Rotation<double>::degrees(sub_tile.rotation);
-                core::Rotation<double> final_rotation = tile_rotation + sub_tile_rotation;
+                core::Rotation<double> tile_rotation = tile_it->rotation;
 
-                core::Vector2<double> sub_tile_offset = core::transform_point(sub_tile.position, tile_rotation);
+                auto sub_tile_position = core::vector2_cast<double>(sub_tile.position);
+                auto sub_tile_offset = core::transform_point(sub_tile_position, tile_rotation);
 
                 PlacedTile placed_tile;
                 placed_tile.tile_def = tile_def;
                 placed_tile.tile.id = sub_tile.id;
                 placed_tile.tile.level = sub_tile.level;
-                placed_tile.tile.position = tile_it->position;
-                placed_tile.tile.position.x += static_cast<std::int32_t>(std::round(sub_tile_offset.x));
-                placed_tile.tile.position.y += static_cast<std::int32_t>(std::round(sub_tile_offset.y));
-                placed_tile.tile.rotation = static_cast<std::int32_t>(std::round(final_rotation.degrees()));
+                placed_tile.tile.position = tile_it->position + core::vector2_round<std::int32_t>(sub_tile_offset);
+
+                std::int32_t degrees = static_cast<std::int32_t>(std::round(tile_rotation.degrees())) +
+                    static_cast<std::int32_t>(std::round(sub_tile.rotation.degrees()));
+                placed_tile.tile.rotation = components::convert_rotation(degrees);
 
                 *out = placed_tile;
                 ++out;

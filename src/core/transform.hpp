@@ -30,33 +30,41 @@
 #include "rect.hpp"
 #include "rotation.hpp"
 
+#include <cmath>
+
 namespace core
 {
-    inline Vector2<double> transform_point(const Vector2<double>& point, double sin, double cos)
+    template <typename T>
+    Vector2<T> transform_point(const Vector2<T>& point, T sin, T cos)
     {
         return{ point.x * cos - sin * point.y, point.y * cos + sin * point.x };
     }
 
-    inline Vector2<double> transform_point(const Vector2<double>& point, Rotation<double> rotation)
+    template <typename T>
+    Vector2<T> transform_point(const Vector2<T>& point, Rotation<T> rotation)
     {
+        using std::sin;
+        using std::cos;
+
         auto rad = rotation.radians();
-        return transform_point(point, std::sin(rad), std::cos(rad));
+        return transform_point(point, sin(rad), cos(rad));
     }
 
-    inline Rect<double> transform_rect(const Rect<double>& rect, double sin, double cos)
+    template <typename T>
+    Rect<T> transform_rect(const Rect<T>& rect, T sin, T cos)
     {
-        core::Vector2<double> center(rect.left + rect.width * 0.5, rect.top + rect.height * 0.5);
-        double left = rect.left - center.x;
-        double top = rect.top - center.y;
-        double right = left + rect.width;
-        double bottom = top + rect.height;
+        core::Vector2<T> center(rect.left + rect.width * 0.5, rect.top + rect.height * 0.5);
+        T left = rect.left - center.x;
+        T top = rect.top - center.y;
+        T right = left + rect.width;
+        T bottom = top + rect.height;
 
-        core::Vector2<double> points[4] =
+        core::Vector2<T> points[4] =
         {
-            transform_point({ left, top }, sin, cos) + center,
-            transform_point({ left, bottom }, sin, cos) + center,
-            transform_point({ right, bottom }, sin, cos) + center,
-            transform_point({ right, top }, sin, cos) + center
+            transform_point<T>({ left, top }, sin, cos) + center,
+            transform_point<T>({ left, bottom }, sin, cos) + center,
+            transform_point<T>({ right, bottom }, sin, cos) + center,
+            transform_point<T>({ right, top }, sin, cos) + center
         };
 
         left = points[0].x;
@@ -72,13 +80,17 @@ namespace core
             else if (points[i].y > bottom) bottom = points[i].y;
         }
 
-        return Rect<double>(left, top, right - left, bottom - top);
+        return Rect<T>(left, top, right - left, bottom - top);
     }
 
-    inline Rect<double> transform_rect(const Rect<double>& rect, Rotation<double> rotation)
+    template <typename T>
+    Rect<T> transform_rect(const Rect<T>& rect, Rotation<T> rotation)
     {
+        using std::sin;
+        using std::cos;
+
         auto rad = rotation.radians();
-        return transform_rect(rect, std::sin(rad), std::cos(rad));
+        return transform_rect(rect, sin(rad), cos(rad));
     }
 }
 

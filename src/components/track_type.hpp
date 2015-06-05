@@ -23,46 +23,19 @@
 * SOFTWARE.
 */
 
-#ifndef PIT_MODE_HPP
-#define PIT_MODE_HPP
+#ifndef TRACK_TYPE_HPP
+#define TRACK_TYPE_HPP
 
-#include "mode_base.hpp"
-
-#include "core/vector2.hpp"
-#include "core/rect.hpp"
-
-#include <qevent.h>
-
-#include <SFML/Graphics.hpp>
-
-#include <boost/optional.hpp>
-
-#include <cstdint>
-
-NAMESPACE_INTERFACE_MODES
-
-struct PitMode
-    : ModeBase
+namespace components
 {
-public:
-    PitMode(EditorCanvas* canvas);
-
-    void render(sf::RenderTarget& render_target, sf::RenderStates render_states);
-    void mouse_press_event(QMouseEvent* event);
-
-    void define_pit(core::Vector2i start, core::Vector2i end);
-    void undefine_pit();
-
-private:
-    void pit_defined(core::IntRect pit);
-    void pit_undefined();
-
-    virtual std::uint32_t enabled_tools() const override;
-    virtual void on_activate() override;
-
-    boost::optional<core::Vector2i> pit_start_;
-};
-
-NAMESPACE_INTERFACE_MODES_END
+    enum class TrackType
+    {
+        Racing = 0,
+        PunaBall = 1,
+        Battle = 2,
+        XBumpz = 3,
+        SingleLap = 4
+    };
+}
 
 #endif

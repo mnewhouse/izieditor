@@ -46,7 +46,7 @@ namespace components
     {
         TileId id = 0;
         core::Vector2i position;
-        std::int32_t rotation;
+        core::Rotation<double> rotation;
     };
 
     struct LevelTile
@@ -62,29 +62,27 @@ namespace components
     struct TileDefinition
     {
     public:
-        TileDefinition(std::string pattern_file, std::string image_file)
+        TileDefinition(std::string pattern_file_, std::string image_file_)
             : id(), image_rect(), pattern_rect(),
-                pattern_file_(std::move(pattern_file)),
-                image_file_(std::move(image_file))
+                pattern_file(std::move(pattern_file_)),
+                image_file(std::move(image_file_))
         {}
 
         TileId id;
         IntRect image_rect;
         IntRect pattern_rect;
+        bool rotatable = true;
 
-        const std::string& image_file() const { return image_file_; }
-        const std::string& pattern_file() const { return pattern_file_; }
-
-    private:
-        std::string pattern_file_;
-        std::string image_file_;
+        std::string pattern_file;
+        std::string image_file;
     };
 
     struct TileGroupDefinition
     {
     public:
-        TileGroupDefinition(TileId id, std::size_t size)
-            : id_(id)
+        TileGroupDefinition(TileId id, std::size_t size, bool rotatable = true)
+            : id_(id),
+              rotatable_(rotatable)
         {
             sub_tiles_.reserve(size);
         }
@@ -99,6 +97,11 @@ namespace components
             return id_;
         }
 
+        bool rotatable() const
+        {
+            return rotatable_;
+        }
+
         const std::vector<LevelTile>& sub_tiles() const
         {
             return sub_tiles_;
@@ -106,6 +109,7 @@ namespace components
 
     private:
         TileId id_;
+        bool rotatable_;
         std::vector<LevelTile> sub_tiles_;
     };
 
@@ -114,6 +118,12 @@ namespace components
         const TileDefinition* tile_def = nullptr;
         LevelTile tile;
     };
+
+    inline core::Rotation<double> convert_rotation(std::int32_t degrees)
+    {
+        auto result = core::Rotation<float>::degrees(static_cast<float>(degrees));
+        return core::Rotation<double>::radians(result.radians());
+    }
 }
 
 #endif

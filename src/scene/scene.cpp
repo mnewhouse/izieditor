@@ -56,6 +56,11 @@ namespace scene
         return track_;
     }
 
+    components::Track& Scene::track()
+    {
+        return track_;
+    }
+
     const components::PatternStore& Scene::pattern_store() const
     {
         return pattern_store_;
@@ -76,7 +81,7 @@ namespace scene
         return track_display_;
     }
 
-    void Scene::resize_track(core::Vector2i new_size)
+    void Scene::resize_track(core::Vector2u new_size)
     {
         track_.set_size(new_size);
     }
@@ -172,6 +177,8 @@ namespace scene
 
     void Scene::move_all_tiles(core::Vector2<double> offset)
     {
+        auto integral_offset = core::vector2_round<std::int32_t>(offset);
+
         for (std::size_t layer_id = 0; layer_id != track_.layer_count(); ++layer_id)
         {
             if (auto layer = track_.layer_by_id(layer_id))
@@ -180,7 +187,7 @@ namespace scene
 
                 for (auto& tile : layer->tiles)
                 {
-                    tile.position += offset;
+                    tile.position += integral_offset;
                 }
 
                 display_layer.translate_vertices(offset);
@@ -190,10 +197,11 @@ namespace scene
 
     void Scene::move_tile(std::size_t layer_id, std::size_t tile_id, core::Vector2<double> offset)
     {
+        auto integral_offset = core::vector2_round<std::int32_t>(offset);
         if (auto layer = track_.layer_by_id(layer_id))
         {
             auto& tile = layer->tiles[tile_id];
-            tile.position += offset;
+            tile.position += integral_offset;
 
             rebuild_tile_vertices(track_display_[layer_id], tile_id, tile);
         }
@@ -206,15 +214,12 @@ namespace scene
         {
             auto& tile = layer->tiles[tile_id];
             
-            auto rotation = core::Rotation<double>::degrees(tile.rotation);
-            rotation += rotation_delta;
+            auto rotation = tile.rotation + rotation_delta;
+            tile.rotation = core::Rotation<double>::degrees(std::round(rotation.degrees()));
 
-            tile.rotation = static_cast<std::int32_t>(std::round(rotation.degrees()));
-
-            core::Vector2<double> position = tile.position;
+            auto position = core::vector2_cast<double>(tile.position);
             auto offset = core::transform_point(position - origin, rotation_delta);
-            tile.position.x = static_cast<std::int32_t>(std::round(origin.x + offset.x));
-            tile.position.y = static_cast<std::int32_t>(std::round(origin.y + offset.y));
+            tile.position = core::vector2_round<std::int32_t>(origin + offset);
 
             rebuild_tile_vertices(track_display_[layer_id], tile_id, tile);
         }
@@ -264,14 +269,44 @@ namespace scene
         track_.append_control_point(control_point);
     }
 
+    void Scene::insert_control_point(std::size_t index, const components::ControlPoint& control_point)
+    {
+        track_.insert_control_point(index, control_point);
+    }
+
+    void Scene::update_control_point(std::size_t index, const components::ControlPoint& control_point)
+    {
+        track_.update_control_point(index, control_point);
+    }
+
     void Scene::delete_last_control_point()
     {
         track_.delete_last_control_point();
     }
 
+    void Scene::delete_control_point(std::size_t index)
+    {
+        track_.delete_control_point(index);
+    }
+
     void Scene::append_start_point(const components::StartPoint& start_point)
     {
         track_.append_start_point(start_point);
+    }
+
+    void Scene::insert_start_point(std::size_t index, const components::StartPoint& start_point)
+    {
+        track_.insert_start_point(index, start_point);
+    }
+
+    void Scene::update_start_points(const std::vector<components::StartPoint>& start_points)
+    {
+        track_.update_start_points(start_points);
+    }
+
+    void Scene::delete_start_point(std::size_t index)
+    {
+        track_.delete_start_point(index);
     }
 
     void Scene::delete_last_start_point()
@@ -381,6 +416,45 @@ namespace scene
     void Scene::undefine_pit()
     {
         track_.undefine_pit();
+    }
+
+    void Scene::move_control_point(std::size_t index, core::Vector2i offset)
+    {
+        const auto& control_points = track_.control_points();
+        if (index < control_points.size())
+        {
+            auto point = control_points[index];
+            point.start += offset;
+            track_.update_control_point(index, point);
+        }        
+    }
+
+    void Scene::rotate_control_point(std::size_t index)
+    {
+        const auto& control_points = track_.control_points();
+        if (index < control_points.size())
+        {
+            using components::ControlPoint;
+
+            auto point = control_points[index];
+            auto half_length = point.length / 2;
+
+            if (point.direction == ControlPoint::Horizontal)
+            {
+                point.direction = ControlPoint::Vertical;
+                point.start.x += half_length;
+                point.start.y -= half_length;
+            }
+
+            else
+            {
+                point.direction = ControlPoint::Horizontal;
+                point.start.x -= half_length;
+                point.start.y += half_length;
+            }            
+
+            track_.update_control_point(index, point);
+        }
     }
 
     void draw(const Scene& scene, sf::RenderTarget& render_target, sf::RenderStates render_states)

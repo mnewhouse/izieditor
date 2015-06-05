@@ -81,6 +81,8 @@ struct TilesMode
     void select_active_tile();
     void select_tiles(const std::map<std::size_t, components::Tile>& selection);
     void select_tile_range(std::size_t tile_index, std::size_t count);
+    void select_tiles_in_area(core::IntRect area);
+
     void tile_selection_changed();
     void deselect();
 
@@ -97,6 +99,8 @@ struct TilesMode
     void commit_tile_rotation();
     void compute_rotation_origin();
 
+    void enable_strict_rotations(bool enable);
+
     virtual void customize_cursor() override;
 
 private:
@@ -112,6 +116,21 @@ private:
 
     void rebuild_tile_selection_display();
     std::size_t acquire_level_layer(std::size_t level);
+
+    void tile_selection_changed(std::size_t selected_tile_count);
+    void tile_selection_hover_changed(const components::Tile* tile);
+
+    void update_placement_tile_info(const components::TileGroupDefinition* tile_group_def);
+    void update_placement_tile_rotation_info(const components::TileGroupDefinition* tile_group_def, std::int32_t rotation);
+
+    void tiles_rotated(core::Rotation<double> delta);
+    void tiles_rotation_finished();
+
+    void tiles_moved(core::Vector2i offset);
+    void tiles_movement_finished();
+
+    void clipboard_filled();
+    void clipboard_emptied();
 
     struct Features;
     std::unique_ptr<Features> features_;

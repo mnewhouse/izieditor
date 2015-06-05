@@ -39,7 +39,8 @@
 
 namespace components
 {
-    void apply_pattern(Pattern& dest, const Pattern& source, core::IntRect rect, core::Vector2i position, std::int32_t rotation);
+    void apply_pattern(Pattern& dest, const Pattern& source, core::IntRect rect, core::Vector2i position, 
+        core::Rotation<double> rotation);
 
     PatternBuilder::PatternBuilder(const Track& track, PatternStore pattern_store)
         : track_(track),
@@ -65,7 +66,7 @@ namespace components
             const auto* tile_def = placed_tile.tile_def;
             const auto& tile = placed_tile.tile;
 
-            auto handle = pattern_store_.load_from_file(tile_def->pattern_file());
+            auto handle = pattern_store_.load_from_file(tile_def->pattern_file);
             apply_pattern(pattern, *handle, tile_def->pattern_rect, tile.position, tile.rotation);
 
             if (step_operation) step_operation();
@@ -80,89 +81,21 @@ namespace components
     }
 
     void apply_pattern(Pattern& dest, const Pattern& source,
-        core::IntRect rect, core::Vector2i position, std::int32_t rotation)
+        core::IntRect rect, core::Vector2i position, core::Rotation<double> rotation)
     {
-        double radians = core::Rotation<double>::degrees(rotation).radians();
+        double radians = rotation.radians();
 
         double sin = -std::sin(radians);
-        double cos = std::cos(radians);
+        double cos = std::cos(radians);        
 
-        core::Vector2i world_size = dest.size();
-        core::Vector2i pattern_size = source.size();
+        core::Vector2i world_size(dest.size().x, dest.size().y);
+        core::Vector2i pattern_size(source.size().x, dest.size().y);
         core::Vector2i source_size(rect.width, rect.height);
 
-        /*
-        auto dest_size = [=]()
+        core::Vector2i dest_size;
         {
-        double x = source_size.x * 0.5;
-        double y = source_size.y * 0.5;
-
-        double cx = x * cangle;
-        double cy = y * cangle;
-        double sx = x * sangle;
-        double sy = y * sangle;
-
-        double w = (std::abs(cx) + std::abs(sy)) * 2.0;
-        double h = (std::abs(cy) + std::abs(sx)) * 2.0;
-
-        double width = std::ceil(w);
-        double height = std::ceil(h);
-
-        return core::Vector2i(static_cast<std::int32_t>(width), static_cast<std::int32_t>(height));
-        }();
-
-        std::int32_t isin = 65536.0 * sangle;
-        std::int32_t icos = 65536.0 * cangle;
-
-        std::int32_t cx = dest_size.x / 2;
-        std::int32_t cy = dest_size.y / 2;
-
-        std::int32_t xd = (source_size.x - dest_size.x) << 15;
-        std::int32_t yd = (source_size.y - dest_size.y) << 15;
-
-        std::int32_t ax = (cx << 16) - (icos * cx);
-        std::int32_t ay = (cy << 16) - (isin * cx);
-
-        std::int32_t base_x = position.x - cx;
-        std::int32_t base_y = position.y - cy;
-
-        if (rect.right() >= pattern_size.x) rect.width = pattern_size.x - rect.left;
-        if (rect.bottom() >= pattern_size.y) rect.height = pattern_size.y - rect.top;
-
-        for (std::int32_t y = -1; y <= dest_size.y; ++y)
-        {
-        std::int32_t dest_y = y + base_y;
-        if (dest_y < 0 || dest_y >= world_size.y) continue;
-
-        std::int32_t sdx = (ax + (isin * (cy - y))) + 0x8000 + xd;
-        std::int32_t sdy = (ay - (icos * (cy - y))) + 0x8000 + yd;
-
-        // cy ->
-        // sdx, sdy -> too high
-
-        for (std::int32_t x = -1; x <= dest_size.x; ++x, sdx += icos, sdy += isin)
-        {
-        std::int32_t dest_x = x + base_x;
-        if (dest_x < 0 || dest_x >= world_size.x) continue;
-
-        std::int32_t source_x = (sdx >> 16);
-        std::int32_t source_y = (sdy >> 16);
-
-        if (source_x >= 0 && source_y >= 0 && source_x < rect.width && source_y < rect.height)
-        {
-        if (auto terrain = source(source_x + rect.left, source_y + rect.top))
-        {
-        dest(dest_x, dest_y) = terrain;
-        }
-        }
-        }
-        }
-        */
-
-        core::Vector2<double> dest_size;
-        {
-            double x = source_size.x * 0.5;
-            double y = source_size.y * 0.5;
+            double x = source_size.x * 0.5f;
+            double y = source_size.y * 0.5f;
 
             double cx = x * cos;
             double cy = y * cos;
@@ -172,11 +105,11 @@ namespace components
             double half_width = std::abs(cx) + std::abs(sy);
             double half_height = std::abs(cy) + std::abs(sx);
 
-            dest_size = { std::ceil(half_width * 2.0), std::ceil(half_height * 2.0) };
+            dest_size.x = static_cast<std::int32_t>(std::ceil(half_width * 2.0));
+            dest_size.y = static_cast<std::int32_t>(std::ceil(half_height * 2.0));
         }
 
-        core::Vector2<double> source_center(source_size.x * 0.5, source_size.y * 0.5);
-        core::Vector2<double> real_position = position;
+        auto source_center = core::vector2_cast<double>(source_size) * 0.5;
 
         if (rect.right() > pattern_size.x) rect.width = pattern_size.x - rect.left;
         if (rect.bottom() > pattern_size.y) rect.height = pattern_size.y - rect.top;
@@ -190,27 +123,26 @@ namespace components
         std::int32_t offset_x = position.x - source_size.x / 2;
         std::int32_t offset_y = position.y - source_size.y / 2;
 
-        for (std::int32_t y = start_y; y < end_y; ++y)
+        core::Vector2<double> dest_point;
+        for (std::int32_t y = start_y; y <= end_y; ++y)
         {
-            for (std::int32_t x = start_x; x < end_x; ++x)
+            dest_point.y = static_cast<double>(y) - source_center.y;
+
+            for (std::int32_t x = start_x; x <= end_x; ++x)
             {
-                core::Vector2<double> point(x, y);
-                point -= source_center;
+                dest_point.x = static_cast<double>(x) - source_center.x;
                 
                 std::int32_t absolute_x = x + offset_x;
                 std::int32_t absolute_y = y + offset_y;
 
                 if (absolute_x >= 0 && absolute_y >= 0 && absolute_x < world_size.x && absolute_y < world_size.y)
                 {
-                    core::Vector2<double> source_point = core::transform_point(point, sin, cos);
-                    source_point += source_center;
+                    auto source_point = core::transform_point<double>(dest_point, sin, cos) + source_center;
+                    auto point = core::vector2_round<std::int32_t>(core::vector2_cast<float>(source_point));
 
-                    auto source_x = static_cast<std::int32_t>(std::round(source_point.x));
-                    auto source_y = static_cast<std::int32_t>(std::round(source_point.y));
-
-                    if (source_x >= 0 && source_y >= 0 && source_x < rect.width && source_y < rect.height)
+                    if (point.x >= 0 && point.y >= 0 && point.x < rect.width && point.y < rect.height)
                     {
-                        if (auto terrain = source(source_x + rect.left, source_y + rect.top))
+                        if (auto terrain = source(point.x + rect.left, point.y + rect.top))
                         {
                             dest(absolute_x, absolute_y) = terrain;
                         }

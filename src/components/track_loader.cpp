@@ -57,9 +57,17 @@ namespace components
         void include(const std::string& file_name, std::size_t num_levels = 0);
         void include(std::istream& stream, std::size_t num_levels = 0);
 
-        void process_tile_group_definition(std::istream& stream, TileId group_id, std::size_t group_size);
-        void process_tile_definition(std::istream& stream, const std::string& pattern_name, const std::string& image_name);
-        void process_terrain_definition(std::istream& stream);
+        enum class AssetType
+        {
+            Contained,
+            Included
+        };
+
+        void process_tile_group_definition(std::istream& stream, TileId group_id, std::size_t group_size, 
+            AssetType asset_type, bool rotatable);
+
+        void process_tile_definition(std::istream& stream, const std::string& pattern_name, const std::string& image_name, AssetType asset_type);
+        void process_terrain_definition(std::istream& stream, std::string terrain_name, AssetType asset_type);
         void process_control_points(std::istream& stream, std::size_t num_points);
         void process_start_points(std::istream& stream, std::size_t num_points);
 
@@ -154,6 +162,8 @@ namespace components
     {
         std::istringstream line_stream;
 
+        AssetType asset_type = (num_levels == 0 ? AssetType::Contained : AssetType::Included);
+
         std::string params[2];
         for (std::string line, directive; directive != "end" && std::getline(stream, line);)
         {
@@ -173,12 +183,14 @@ namespace components
 
             else if (directive == "tiledefinition" && line_stream >> params[0] >> params[1])
             {
-                process_tile_definition(stream, params[0], params[1]);
+                process_tile_definition(stream, params[0], params[1], asset_type);
             }
 
-            else if (directive == "terrain")
+            else if (directive == "terrain" && std::getline(line_stream, params[0]))
             {
-                process_terrain_definition(stream);
+                boost::trim(params[0]);
+
+                process_terrain_definition(stream, params[0], asset_type);
             }
 
             else if (directive == "subterrain")
@@ -186,7 +198,15 @@ namespace components
                 SubTerrain sub_terrain;
                 if (line_stream >> sub_terrain)
                 {
-                    track_.define_sub_terrain(sub_terrain);
+                    if (asset_type == AssetType::Contained)
+                    {
+                        track_.define_contained_sub_terrain(sub_terrain);
+                    }
+
+                    else
+                    {
+                        track_.define_sub_terrain(sub_terrain);
+                    }                   
                 }
             }
 
@@ -196,7 +216,8 @@ namespace components
                 TileId group_id;
                 if (line_stream >> group_id >> group_size)
                 {
-                    process_tile_group_definition(stream, group_id, group_size);
+                    bool rotatable = (directive == "tilegroup");
+                    process_tile_group_definition(stream, group_id, group_size, asset_type, rotatable);
                 }
             }
 
@@ -318,6 +339,68 @@ namespace components
                     track_.define_pit(pit);
                 }
             }
+
+            else if (directive == "killterrain")
+            {
+                std::int32_t kill_terrain;
+                if (line_stream >> kill_terrain)
+                {
+                    auto terrain_id = static_cast<TerrainId>(kill_terrain);
+                    if (asset_type == AssetType::Contained)
+                    {
+                        track_.define_contained_kill_terrain(terrain_id);
+                    }
+
+                    else
+                    {
+                        track_.define_kill_terrain(terrain_id);
+                    }
+                }
+            }
+
+            else if (directive == "gravity")
+            {
+                std::int32_t gravity_strength;
+                if (line_stream >> gravity_strength)
+                {
+                    track_.set_gravity_strength(gravity_strength);
+                }
+            }
+
+            else if (directive == "gravitydirection")
+            {
+                std::int32_t gravity_direction;
+                if (line_stream >> gravity_direction)
+                {
+                    track_.set_gravity_direction(gravity_direction);
+                }
+            }
+
+            else if (directive == "punaballtrack")
+            {
+                track_.set_track_type(TrackType::PunaBall);
+            }
+
+            else if (directive == "battletrack")
+            {
+                TrackType track_type = TrackType::Battle;
+
+                if (line_stream >> params[0])
+                {
+                    boost::to_lower(params[0]);
+                    if (params[0] == "bumpz")
+                    {
+                        track_type = TrackType::XBumpz;
+                    }
+                }
+
+                track_.set_track_type(TrackType::Battle);
+            }
+
+            else if (directive == "singlelaptrack")
+            {
+                track_.set_track_type(TrackType::SingleLap);
+            }
         }
     }
 
@@ -331,7 +414,8 @@ namespace components
         current_layer_->tiles.push_back(tile);
     }
 
-    void TrackLoader::Impl::process_tile_definition(std::istream& stream, const std::string& pattern_file, const std::string& image_file)
+    void TrackLoader::Impl::process_tile_definition(std::istream& stream, const std::string& pattern_file, 
+        const std::string& image_file, AssetType asset_type)
     {
         auto pattern_path = resolve_asset_path(pattern_file);
         auto image_path = resolve_asset_path(image_file);
@@ -352,21 +436,26 @@ namespace components
 
                 if ((directive_ == "tile" || directive_ == "norottile") && line_stream_ >> tile_def)
                 {
-                    track_.define_tile(tile_def);
-                }
+                    tile_def.rotatable = (directive_ == "tile");
 
-                else if (!line_stream_ && tile_def.id == 515)
-                {
-                    for (char ch : line_)
-                        printf("%c ", ch);
+                    if (asset_type == AssetType::Contained)
+                    {
+                        track_.define_contained_tile(tile_def, pattern_file, image_file);
+                    }
+                    
+                    else
+                    {
+                        track_.define_tile(tile_def);
+                    }                    
                 }
             }
         }
     }
 
-    void TrackLoader::Impl::process_tile_group_definition(std::istream& stream, TileId group_id, std::size_t group_size)
+    void TrackLoader::Impl::process_tile_group_definition(std::istream& stream, TileId group_id, 
+        std::size_t group_size, AssetType asset_type, bool rotatable)
     {
-        TileGroupDefinition tile_group(group_id, group_size);
+        TileGroupDefinition tile_group(group_id, group_size, rotatable);
         for (directive_.clear(); directive_ != "end" && std::getline(stream, line_);)
         {
             line_stream_.clear();
@@ -393,15 +482,33 @@ namespace components
             }
         }
 
-        track_.define_tile_group(tile_group);
+        if (asset_type == AssetType::Contained)
+        {
+            track_.define_contained_tile_group(tile_group);
+        }
+
+        else
+        {
+            track_.define_tile_group(tile_group);
+        }
     }
 
-    void TrackLoader::Impl::process_terrain_definition(std::istream& stream)
+    void TrackLoader::Impl::process_terrain_definition(std::istream& stream, std::string terrain_name, AssetType asset_type)
     {
         TerrainDefinition terrain_def;
+        terrain_def.name = std::move(terrain_name);
+
         if (stream >> terrain_def)
         {
-            track_.define_terrain(terrain_def);
+            if (asset_type == AssetType::Contained)
+            {
+                track_.define_contained_terrain(terrain_def);
+            }
+
+            else
+            {
+                track_.define_terrain(terrain_def);
+            }
         }
     }
 
@@ -444,7 +551,8 @@ namespace components
             core::read_directive(line_stream_, directive_);
 
             double degrees = 0.0;
-            if (line_stream_ >> start_point.position.x >> start_point.position.y >> start_point.rotation)
+            if (line_stream_ >> start_point.position.x >> start_point.position.y >> 
+                start_point.rotation >> start_point.level)
             {
                 track_.append_start_point(start_point);
             }
@@ -467,7 +575,7 @@ namespace components
 
     void TrackLoader::include(const std::string& file_name)
     {
-        impl_->include(file_name);
+        impl_->include(file_name, 1);
     }
 
     void TrackLoader::load_from_stream(std::istream& stream, std::string working_directory)

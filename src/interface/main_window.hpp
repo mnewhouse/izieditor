@@ -43,6 +43,8 @@ namespace interface
     class LayerPropertiesDialog;
     class FillDialog;
     class ResizeTrackDialog;
+    class TrackPropertiesDialog;
+    struct TrackEssentials;
 
     class MainWindow : public QMainWindow
     {
@@ -56,9 +58,9 @@ namespace interface
         void open_track();
         void save_track();
 
-        void scene_loaded(const scene::Scene* scene_ptr);
-        void zoom_level_changed(double zoom_level);
+        void create_track(const TrackEssentials&);
 
+        void scene_loaded(const scene::Scene* scene_ptr);
         void update_scroll_bars(core::DoubleRect visible_area);
 
         void scroll_canvas_horizontally(int value);
@@ -66,8 +68,7 @@ namespace interface
 
 
         void resize_track();
-
-        void mouse_move(const QPoint& point);
+        void change_mode(int);
 
         void tool_changed(EditorTool tool);
         void mode_changed(EditorMode mode);
@@ -75,25 +76,11 @@ namespace interface
         void tool_enabled(EditorTool tool);
         void tool_disabled(EditorTool tool);
 
+        void display_tool_info(const QString& info);
+        void display_secondary_tool_info(const QString& info);
+        void update_zoom_info(const QString& info);
+        void update_position_info(const QString& info);
         void clear_tool_info();
-
-        void placement_tile_changed(const components::TileGroupDefinition* tile_group);
-        void placement_tile_rotated(std::int32_t rotation);
-
-        void selection_area_changed(core::IntRect area);
-        void area_selected(core::IntRect area);
-
-        void tile_selection_changed(std::size_t selected_tile_count);
-        void tile_selection_hover_changed(const components::Tile* tile);
-
-        void tiles_moved(core::Vector2i offset);
-        void tiles_rotated(core::Rotation<double> rotation);
-
-        void tiles_movement_finished();
-        void tiles_rotation_finished();
-
-        void pit_defined(core::IntRect);
-        void pit_undefined();
 
         void show_fill_dialog();
 
@@ -101,6 +88,7 @@ namespace interface
         void layer_deselected();
         
         void show_layer_properties();
+        void show_track_properties();
 
         void update_layer_selection();
         void delete_layer_confirmation();
@@ -110,9 +98,6 @@ namespace interface
 
         void enable_redo();
         void disable_redo();
-
-        void enable_pasting();
-        void disable_pasting();
 
         void toggle_layer_view();
         void toggle_history_view();
@@ -133,11 +118,14 @@ namespace interface
         LayerPropertiesDialog* layer_properties_dialog_ = nullptr;
         FillDialog* fill_dialog_ = nullptr;
         ResizeTrackDialog* resize_track_dialog_ = nullptr;
+        TrackPropertiesDialog* track_properties_dialog_ = nullptr;
 
         QLabel* tool_info_label_ = nullptr;
         QLabel* secondary_tool_info_label_ = nullptr;
         QLabel* position_label_ = nullptr;
         QLabel* zoom_label_ = nullptr;
+
+        QComboBox* mode_combobox_ = nullptr;
 
         bool saved_ = true;
     };

@@ -52,6 +52,7 @@ namespace components
 namespace interface
 {
     struct FillProperties;
+    struct TrackProperties;
 
     class Action;
 
@@ -66,6 +67,7 @@ namespace interface
 
         virtual void onRender() override;
         virtual void onResize() override;
+        virtual void onInitialize() override;
 
         virtual void mouseMoveEvent(QMouseEvent*) override;
         virtual void mousePressEvent(QMouseEvent*) override;
@@ -102,17 +104,22 @@ namespace interface
         void perform_action(const std::string& text, std::function<void()>, std::function<void()>);
 
     public slots:
-        void adopt_scene(std::unique_ptr<scene::Scene>& scene_ptr);
+    void adopt_scene(std::unique_ptr<scene::Scene>& scene_ptr);
 
         void zoom_in();
         void zoom_out();
         void zoom_to_fit();
+        void zoom_100_percent();
+        void zoom_200_percent();
+        
+        void enable_strict_rotations(bool enable);
 
         void activate_placement_tool();
         void activate_tile_selection_tool();
         void activate_area_selection_tool();
         void activate_move_tool();
         void activate_rotation_tool();
+        void activate_resize_tool();
 
         void activate_tiles_mode();
         void activate_control_points_mode();
@@ -148,6 +155,7 @@ namespace interface
 
         void merge_selected_layer_with_previous();
 
+        void change_track_properties(const TrackProperties& track_properties);
         void fill_area(const FillProperties& properties);
         void resize_track(std::int32_t, std::int32_t height,
             HorizontalAnchor horizontal_anchor, VerticalAnchor vertical_anchor);
@@ -155,43 +163,28 @@ namespace interface
     signals:
         void perform_action(const Action& action);
 
+        void display_tool_info(const QString& info);
+        void display_secondary_tool_info(const QString& info);
+        void update_position_info(const QString& info);
+        void update_zoom_info(const QString& info);
+
+        void clear_tool_info();
+
         void scene_loaded(const scene::Scene* scene_ptr);
         void track_resized(core::Vector2i new_size);
 
-        void zoom_level_changed(double zoom_level);
-
         void visible_area_updated(core::DoubleRect area);
 
-        void tool_changed(EditorTool);
-        void mode_changed(EditorMode);
+        void tool_changed(EditorTool tool);
+        void mode_changed(EditorMode mode);
 
         void tool_enabled(EditorTool tool);
         void tool_disabled(EditorTool tool);
 
-        void clear_tool_info();
-
-        void mouse_move(const QPoint&);
-
-        void tile_selection_changed(std::size_t selected_tile_count);
-        void tile_selection_hover_changed(const components::Tile* tile);
-
-        void selection_area_changed(core::IntRect area);
-        void area_selected(core::IntRect area);
-
-        void placement_tile_changed(const components::TileGroupDefinition* tile_group_def);
-        void placement_tile_rotated(std::int32_t rotation);
-
-        void tiles_rotated(core::Rotation<double> delta);
-        void tiles_rotation_finished();
-
-        void tiles_moved(core::Vector2i offset);
-        void tiles_movement_finished();
-
-        void clipboard_filled();
-        void clipboard_emptied();
-
-        void pit_defined(core::IntRect pit);
-        void pit_undefined();
+        void enable_pasting(bool enable);
+        void enable_cutting(bool enable);
+        void enable_copying(bool enable);
+        void enable_deleting(bool enable);
 
         void layer_created(std::size_t layer_id, std::size_t index);
         void layer_deleted(std::size_t layer_id);
@@ -207,6 +200,12 @@ namespace interface
         void layer_visibility_changed(std::size_t layer_id, bool visible);
 
     private:
+        void mouse_moved(core::Vector2i point);
+        void zoom_level_changed(double zoom_level);
+
+        void selection_area_changed(core::IntRect area);
+        void area_selected(core::IntRect area);
+
         void set_prioritized_cursor(EditorCursor cursor);
         using QtSFMLCanvas::set_prioritized_cursor;
         using QtSFMLCanvas::set_active_cursor;

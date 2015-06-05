@@ -310,7 +310,7 @@ namespace interface
         setLayout(layout);
 
         visibility_checkbox_ = new QCheckBox(this);
-        visibility_checkbox_->setChecked(true);
+        visibility_checkbox_->setChecked(layer->visible);
         visibility_checkbox_->setStyleSheet(visibility_checkbox_style);
         layout->addWidget(visibility_checkbox_);
 

@@ -45,7 +45,7 @@ namespace interface
         using CursorId = std::size_t;
         enum : CursorId
         {
-            InvalidCursorId = -1
+            InvalidCursorId = CursorId(-1)
         };
 
         CursorId create_cursor(const sf::Image& image, sf::IntRect rect = sf::IntRect());
@@ -67,7 +67,9 @@ namespace interface
     private:
         void render();
         void draw_cursor();
+        void update_default_cursor_visibility();
 
+        CursorId active_cursor() const;
         bool cursor_override_enabled() const;
 
         virtual QPaintEngine* paintEngine() const override;
@@ -78,12 +80,15 @@ namespace interface
 
         bool initialized_ = false;
         bool cursor_visible_ = false;
+        bool was_cursor_visible_ = false;
 
         QTimer timer_;
 
         std::map<CursorId, sf::Texture> cursor_map_;
         CursorId active_cursor_ = InvalidCursorId;
         CursorId prioritized_cursor_ = InvalidCursorId;
+
+        CursorId last_cursor_ = InvalidCursorId;
         core::Vector2i mouse_position_;
 
     };

@@ -30,18 +30,18 @@ namespace components
     void TileLibrary::define_tile(const TileDefinition& tile_def)
     {
         auto it = tile_map_.find(tile_def.id);
-        if (it == tile_map_.end()) 
+        if (it == tile_map_.end())
         {
             tile_map_.insert(std::make_pair(tile_def.id, tile_def));
         }
-        else 
+        else
         {
             it->second = tile_def;
         }
 
-        TileGroupDefinition tile_group_def(tile_def.id, 1);
+        TileGroupDefinition tile_group_def(tile_def.id, 1, tile_def.rotatable);
 
-        LevelTile sub_tile;
+        LevelTile sub_tile{};
         sub_tile.id = tile_def.id;
 
         tile_group_def.add_sub_tile(sub_tile);

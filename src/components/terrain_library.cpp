@@ -194,6 +194,19 @@ namespace components
         });
     }
 
+    void TerrainLibrary::define_kill_terrain(TerrainId terrain_id)
+    {
+        terrains_[terrain_id].energyloss = 100000;
+
+        auto* sub_terrain = &sub_terrains_[terrain_id * 16U];
+        auto* sub_terrain_end = sub_terrain + 16U;
+        
+        for (; sub_terrain != sub_terrain_end; ++sub_terrain)
+        {
+            sub_terrain->energyloss = 100000;
+        }
+    }
+
     const TerrainHash& TerrainLibrary::terrain_hash(TerrainId terrain_id) const
     {
         return terrains_[terrain_id].hash;

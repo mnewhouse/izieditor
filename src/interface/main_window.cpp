@@ -29,6 +29,7 @@
 #include "layer_properties.hpp"
 #include "fill_dialog.hpp"
 #include "resize_track_dialog.hpp"
+#include "track_properties_dialog.hpp"
 
 #include "components/track_saving.hpp"
 
@@ -62,6 +63,19 @@ namespace interface
         zoom_label_->setMinimumWidth(40);
         zoom_label_->setAlignment(Qt::AlignHCenter);
 
+        mode_combobox_ = new QComboBox(ui_.toolBar);        
+        mode_combobox_->addItem("Tiles");
+        mode_combobox_->addItem("Control Points");
+        mode_combobox_->addItem("Start Points");
+        mode_combobox_->addItem("Pit");
+        mode_combobox_->addItem("Pattern");
+
+        mode_combobox_->setEnabled(false);
+        ui_.toolBar->insertWidget(ui_.actionPlacement, mode_combobox_);
+        ui_.toolBar->insertSeparator(ui_.actionPlacement);
+
+        connect(mode_combobox_, SIGNAL(currentIndexChanged(int)), this, SLOT(change_mode(int)));
+
         tool_info_label_ = new QLabel(ui_.statusBar);
         tool_info_label_->setMinimumWidth(50);
         secondary_tool_info_label_ = new QLabel(ui_.statusBar);
@@ -76,15 +90,23 @@ namespace interface
         ui_.verticalScrollBar->hide();
 
         new_dialog_ = new NewTrackDialog(this);
+
         loading_dialog_ = new LoadingDialog(this);
         layer_properties_dialog_ = new LayerPropertiesDialog(this);
         fill_dialog_ = new FillDialog(this);
         resize_track_dialog_ = new ResizeTrackDialog(this);
+        track_properties_dialog_ = new TrackPropertiesDialog(this);
 
         connect(ui_.actionNew, SIGNAL(triggered()), new_dialog_, SLOT(show()));
         connect(ui_.actionOpen, SIGNAL(triggered()), this, SLOT(open_track()));
         connect(ui_.actionSave, SIGNAL(triggered()), this, SLOT(save_track()));
         connect(ui_.actionExit, SIGNAL(triggered()), this, SLOT(close()));
+
+        connect(ui_.actionTrack_Properties, SIGNAL(triggered()), 
+            this, SLOT(show_track_properties()));
+
+        connect(track_properties_dialog_, SIGNAL(commit_changes(const TrackProperties&)),
+            ui_.editorCanvas, SLOT(change_track_properties(const TrackProperties&)));
         
         connect(ui_.actionHistoryView, SIGNAL(triggered()), this, SLOT(toggle_history_view()));
         connect(ui_.actionLayerView, SIGNAL(triggered()), this, SLOT(toggle_layer_view()));
@@ -96,7 +118,7 @@ namespace interface
             ui_.actionLayerView, SLOT(setChecked(bool)));
 
         connect(new_dialog_, SIGNAL(create_track(const TrackEssentials&)),
-            loading_dialog_, SLOT(create_track(const TrackEssentials&)));
+            this, SLOT(create_track(const TrackEssentials&)));
 
         connect(loading_dialog_, SIGNAL(scene_ready(std::unique_ptr<scene::Scene>&)),
             ui_.editorCanvas, SLOT(adopt_scene(std::unique_ptr<scene::Scene>&)));
@@ -104,8 +126,27 @@ namespace interface
         connect(ui_.actionZoom_In, SIGNAL(triggered()), ui_.editorCanvas, SLOT(zoom_in()));
         connect(ui_.actionZoom_Out, SIGNAL(triggered()), ui_.editorCanvas, SLOT(zoom_out()));
         connect(ui_.actionZoom_to_fit, SIGNAL(triggered()), ui_.editorCanvas, SLOT(zoom_to_fit()));
+        connect(ui_.action100, SIGNAL(triggered()), ui_.editorCanvas, SLOT(zoom_100_percent()));
+        connect(ui_.action200, SIGNAL(triggered()), ui_.editorCanvas, SLOT(zoom_200_percent()));
 
-        connect(ui_.editorCanvas, SIGNAL(zoom_level_changed(double)), this, SLOT(zoom_level_changed(double)));
+        connect(ui_.editorCanvas, SIGNAL(enable_pasting(bool)), ui_.actionPaste, SLOT(setEnabled(bool)));
+        connect(ui_.editorCanvas, SIGNAL(enable_copying(bool)), ui_.actionCopy, SLOT(setEnabled(bool)));
+        connect(ui_.editorCanvas, SIGNAL(enable_cutting(bool)), ui_.actionCut, SLOT(setEnabled(bool)));
+        connect(ui_.editorCanvas, SIGNAL(enable_deleting(bool)), ui_.actionDelete, SLOT(setEnabled(bool)));
+
+        connect(ui_.editorCanvas, SIGNAL(display_tool_info(const QString&)), 
+            this, SLOT(display_tool_info(const QString&)));
+
+        connect(ui_.editorCanvas, SIGNAL(display_secondary_tool_info(const QString&)),
+            this, SLOT(display_secondary_tool_info(const QString&)));
+
+        connect(ui_.editorCanvas, SIGNAL(clear_tool_info()), this, SLOT(clear_tool_info()));
+
+        connect(ui_.editorCanvas, SIGNAL(update_zoom_info(const QString&)),
+            this, SLOT(update_zoom_info(const QString&)));
+
+        connect(ui_.editorCanvas, SIGNAL(update_position_info(const QString&)),
+            this, SLOT(update_position_info(const QString&)));
 
         connect(ui_.editorCanvas, SIGNAL(visible_area_updated(core::DoubleRect)),
             this, SLOT(update_scroll_bars(core::DoubleRect)));
@@ -127,11 +168,8 @@ namespace interface
         connect(ui_.actionCut, SIGNAL(triggered()), ui_.editorCanvas, SLOT(cut_selection()));
         connect(ui_.actionPaste, SIGNAL(triggered()), ui_.editorCanvas, SLOT(paste_clipboard()));
 
-        connect(ui_.editorCanvas, SIGNAL(clipboard_filled()), this, SLOT(enable_pasting()));
-        connect(ui_.editorCanvas, SIGNAL(clipboard_emptied()), this, SLOT(disable_pasting()));
-
-        connect(ui_.editorCanvas, SIGNAL(mouse_move(const QPoint&)),
-            this, SLOT(mouse_move(const QPoint&)));
+        connect(ui_.actionStrict_Rotations, SIGNAL(toggled(bool)), 
+            ui_.editorCanvas, SLOT(enable_strict_rotations(bool)));
         
         connect(ui_.editorCanvas, SIGNAL(scene_loaded(const scene::Scene*)), this, SLOT(scene_loaded(const scene::Scene*)));
 
@@ -140,9 +178,9 @@ namespace interface
         connect(ui_.actionPlacement, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_placement_tool()));
         connect(ui_.actionSingleSelectionTool, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_tile_selection_tool()));
         connect(ui_.actionAreaSelectionTool, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_area_selection_tool()));
-
         connect(ui_.actionMoveTool, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_move_tool()));
         connect(ui_.actionRotation_Tool, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_rotation_tool()));
+        connect(ui_.actionResize_Tool, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_resize_tool()));
 
         connect(ui_.actionTiles, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_tiles_mode()));
         connect(ui_.actionControl_Points, SIGNAL(triggered()), ui_.editorCanvas, SLOT(activate_control_points_mode()));
@@ -155,36 +193,6 @@ namespace interface
 
         connect(ui_.editorCanvas, SIGNAL(tool_enabled(EditorTool)), this, SLOT(tool_enabled(EditorTool)));
         connect(ui_.editorCanvas, SIGNAL(tool_disabled(EditorTool)), this, SLOT(tool_disabled(EditorTool)));
-
-        connect(ui_.editorCanvas, SIGNAL(clear_tool_info()), this, SLOT(clear_tool_info()));
-
-        connect(ui_.editorCanvas, SIGNAL(selection_area_changed(core::IntRect)),
-            this, SLOT(selection_area_changed(core::IntRect)));
-        
-        connect(ui_.editorCanvas, SIGNAL(area_selected(core::IntRect)), 
-                this, SLOT(area_selected(core::IntRect)));
-
-        connect(ui_.editorCanvas, SIGNAL(tile_selection_changed(std::size_t)),
-            this, SLOT(tile_selection_changed(std::size_t)));
-
-        connect(ui_.editorCanvas, SIGNAL(tile_selection_hover_changed(const components::Tile*)),
-            this, SLOT(tile_selection_hover_changed(const components::Tile*)));
-
-        connect(ui_.editorCanvas, SIGNAL(tiles_moved(core::Vector2i)),
-            this, SLOT(tiles_moved(core::Vector2i)));
-
-        connect(ui_.editorCanvas, SIGNAL(tiles_movement_finished()), this, SLOT(tiles_movement_finished()));
-
-        connect(ui_.editorCanvas, SIGNAL(tiles_rotated(core::Rotation<double>)),
-            this, SLOT(tiles_rotated(core::Rotation<double>)));
-
-        connect(ui_.editorCanvas, SIGNAL(tiles_rotation_finished()), this, SLOT(tiles_rotation_finished()));
-
-        connect(ui_.editorCanvas, SIGNAL(placement_tile_changed(const components::TileGroupDefinition*)),
-            this, SLOT(placement_tile_changed(const components::TileGroupDefinition*)));
-
-        connect(ui_.editorCanvas, SIGNAL(placement_tile_rotated(std::int32_t)),
-            this, SLOT(placement_tile_rotated(std::int32_t)));
 
         connect(ui_.actionDeselect, SIGNAL(triggered()), ui_.editorCanvas, SLOT(deselect()));
 
@@ -250,11 +258,6 @@ namespace interface
         connect(fill_dialog_, SIGNAL(fill_area(const FillProperties&)),
             ui_.editorCanvas, SLOT(fill_area(const FillProperties&)));
 
-        connect(ui_.editorCanvas, SIGNAL(pit_defined(core::IntRect)),
-            this, SLOT(pit_defined(core::IntRect)));
-
-        connect(ui_.editorCanvas, SIGNAL(pit_undefined()), this, SLOT(pit_undefined()));
-
         connect(ui_.editorCanvas, SIGNAL(perform_action(const Action&)),
             ui_.actionHistoryList, SLOT(push_action(const Action&)));
 
@@ -273,6 +276,31 @@ namespace interface
     {
     }
 
+    void MainWindow::create_track(const TrackEssentials& track_essentials)
+    {
+        bool create = true;
+        if (!saved_)
+        {
+            auto result = QMessageBox::question(this, "New Track", "Do you want to save the current track before creating a new one?",
+                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
+            if (result == QMessageBox::Cancel)
+            {
+                create = false;
+            }
+
+            if (result == QMessageBox::Yes)
+            {
+                ui_.actionSave->trigger();
+            }
+        }
+
+        if (create)
+        {
+            loading_dialog_->create_track(track_essentials);
+        }
+    }
+
     void MainWindow::open_track()
     {
         QString file_path = QFileDialog::getOpenFileName(this, "Open Track", "./tracks",
@@ -280,7 +308,27 @@ namespace interface
 
         if (!file_path.isEmpty())
         {
-            loading_dialog_->load_track(file_path);
+            bool load = true;
+            if (!saved_)
+            {
+                auto result = QMessageBox::question(this, "Open Track", "Do you want to save the current track before opening another one?",
+                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
+                if (result == QMessageBox::Cancel)
+                {
+                    load = false;
+                }
+
+                if (result == QMessageBox::Yes)
+                {
+                    ui_.actionSave->trigger();
+                }
+            }
+
+            if (load)
+            {
+                loading_dialog_->load_track(file_path);
+            }
         }        
     }
 
@@ -290,7 +338,9 @@ namespace interface
 
         try
         {
-            components::save_track(ui_.editorCanvas->track(), ui_.editorCanvas->pattern_store());            
+            components::save_track(ui_.editorCanvas->track(), ui_.editorCanvas->pattern_store());
+
+            QMessageBox::information(this, "Saved", "Track saved.", QMessageBox::Ok);
         }
         
         catch (const std::exception& e)
@@ -307,6 +357,8 @@ namespace interface
         ui_.editorCanvas->set_active_mode(EditorMode::Tiles);
         ui_.editorCanvas->set_active_tool(EditorTool::Placement);
 
+        ui_.actionTrack_Properties->setEnabled(true);
+
         ui_.menuLayer->setEnabled(true);
         ui_.menuEdit->setEnabled(true);
         ui_.menuMode->setEnabled(true);
@@ -317,14 +369,19 @@ namespace interface
         ui_.actionPattern->setEnabled(true);
         ui_.actionControl_Points->setEnabled(true);
         ui_.actionStart_Points->setEnabled(true);
+        mode_combobox_->setEnabled(true);
 
         ui_.actionPlacement->setEnabled(true);
         ui_.actionSingleSelectionTool->setEnabled(true);
         ui_.actionAreaSelectionTool->setEnabled(true);
 
+        ui_.actionStrict_Rotations->setEnabled(true);
+
         ui_.actionZoom_In->setEnabled(true);
         ui_.actionZoom_Out->setEnabled(true);
         ui_.actionZoom_to_fit->setEnabled(true);
+        ui_.action100->setEnabled(true);
+        ui_.action200->setEnabled(true);
 
         ui_.actionResize->setEnabled(true);
         ui_.actionSave->setEnabled(true);
@@ -344,6 +401,8 @@ namespace interface
 
     void MainWindow::closeEvent(QCloseEvent* event)
     {
+        bool accept = true;
+
         if (!saved_)
         {
             auto result = QMessageBox::question(this, "Exit", "Do you want to save the track before exiting?",
@@ -351,7 +410,7 @@ namespace interface
 
             if (result == QMessageBox::Cancel)
             {
-                event->ignore();
+                accept = false;
             }
 
             if (result == QMessageBox::Yes)
@@ -360,7 +419,8 @@ namespace interface
             }
         }
 
-        event->accept();
+        if (accept) event->accept();
+        else event->accept();
     }
 
     void MainWindow::tool_enabled(EditorTool tool)
@@ -383,6 +443,23 @@ namespace interface
 
     void MainWindow::mode_changed(EditorMode mode)
     {
+        auto mode_index = [=]()
+        {
+            switch (mode)
+            {
+            case EditorMode::Tiles: return 0;
+            case EditorMode::ControlPoints: return 1;
+            case EditorMode::StartPoints: return 2;
+            case EditorMode::Pit: return 3;
+            case EditorMode::Pattern: return 4;
+            default: return 0;
+            };
+        }();
+
+        mode_combobox_->blockSignals(true);
+        mode_combobox_->setCurrentIndex(mode_index);
+        mode_combobox_->blockSignals(false);
+
         std::initializer_list<QAction*> modes =
         {
             ui_.actionTiles,
@@ -438,6 +515,8 @@ namespace interface
             return ui_.actionSingleSelectionTool;
         case EditorTool::AreaSelection:
             return ui_.actionAreaSelectionTool;
+        case EditorTool::Resize:
+            return ui_.actionResize_Tool;
         }
 
         return nullptr;
@@ -460,7 +539,8 @@ namespace interface
             ui_.actionPlacement,
             ui_.actionSingleSelectionTool,
             ui_.actionAreaSelectionTool,
-            ui_.actionRotation_Tool
+            ui_.actionRotation_Tool,
+            ui_.actionResize_Tool
         };
 
         for (QAction* action : tools)
@@ -474,10 +554,24 @@ namespace interface
         }
     }
 
-    void MainWindow::zoom_level_changed(double zoom_level)
+    void MainWindow::display_tool_info(const QString& info)
     {
-        int percentage = static_cast<int>(zoom_level * 100.0);
-        zoom_label_->setText(QString::number(percentage) + "%");
+        tool_info_label_->setText(info);
+    }
+
+    void MainWindow::display_secondary_tool_info(const QString& info)
+    {
+        secondary_tool_info_label_->setText(info);
+    }
+
+    void MainWindow::update_zoom_info(const QString& info)
+    {
+        zoom_label_->setText(info);
+    }
+
+    void MainWindow::update_position_info(const QString& info)
+    {
+        position_label_->setText(info);
     }
 
     void MainWindow::update_scroll_bars(core::DoubleRect visible_area)
@@ -538,18 +632,6 @@ namespace interface
         ui_.editorCanvas->set_top_camera_anchor(value);
     }
 
-    void MainWindow::tile_selection_changed(std::size_t selected_tile_count)
-    {
-        bool enable_tools = selected_tile_count != 0;
-
-        ui_.actionMoveTool->setEnabled(enable_tools);
-        ui_.actionRotation_Tool->setEnabled(enable_tools);
-
-        ui_.actionDelete->setEnabled(enable_tools);
-        ui_.actionCut->setEnabled(enable_tools);
-        ui_.actionCopy->setEnabled(enable_tools);
-    }
-
     void MainWindow::layer_selected(std::size_t layer_id)
     {
         ui_.actionDelete_Layer->setEnabled(true);
@@ -588,6 +670,11 @@ namespace interface
         }
     }
 
+    void MainWindow::show_track_properties()
+    {
+        track_properties_dialog_->show_dialog(ui_.editorCanvas->track());
+    }
+
     void MainWindow::show_fill_dialog()
     {
         fill_dialog_->show();
@@ -611,16 +698,6 @@ namespace interface
     {
         auto track_size = ui_.editorCanvas->track_size();
         resize_track_dialog_->show(track_size.x, track_size.y);
-    }
-
-    void MainWindow::enable_pasting()
-    {
-        ui_.actionPaste->setEnabled(true);
-    }
-
-    void MainWindow::disable_pasting()
-    {
-        ui_.actionPaste->setEnabled(false);
     }
 
     void MainWindow::action_performed()
@@ -648,135 +725,21 @@ namespace interface
         ui_.actionRedo->setDisabled(true);
     }
 
-    void MainWindow::tile_selection_hover_changed(const components::Tile* tile)
+    void MainWindow::change_mode(int index)
     {
-        if (tile)
+        auto action = [=]() -> QAction*
         {
-            QString text = "Tile " + QString::number(tile->id);
-            tool_info_label_->setText(text);
+            switch (index)
+            {            
+            case 1: return ui_.actionControl_Points;
+            case 2: return ui_.actionStart_Points;
+            case 3: return ui_.actionPit;
+            case 4: return ui_.actionPattern;
+            default: return ui_.actionTiles;
+            }
+        }();
 
-            QString secondary_text = "x=";
-            secondary_text += QString::number(tile->position.x);
-            secondary_text += " y=";
-            secondary_text += QString::number(tile->position.y);
-            secondary_text += " r=";
-            secondary_text += QString::number(tile->rotation);
-            secondary_text += L'°';
-            secondary_tool_info_label_->setText(secondary_text);
-        }
-
-        else
-        {
-            tool_info_label_->setText({});
-            secondary_tool_info_label_->setText({});
-        }
-    }
-
-    void MainWindow::placement_tile_changed(const components::TileGroupDefinition* tile_group)
-    {
-        if (tile_group)
-        {
-            auto text = "Tile " + QString::number(tile_group->id());
-            tool_info_label_->setText(text);            
-        }
-
-        else
-        {
-            tool_info_label_->setText({});
-        }
-    }
-
-    void MainWindow::placement_tile_rotated(std::int32_t rotation)
-    {
-        QString text = QString::number(rotation);
-        text += L'°';
-
-        secondary_tool_info_label_->setText(text);
-
-        fill_dialog_->set_fill_rotation(rotation);
-    }
-
-    void MainWindow::selection_area_changed(core::IntRect area)
-    {
-        if (area.width != 0 && area.height != 0)
-        {
-            QString text = "Selection: [x=";
-            text += QString::number(area.left);
-            text += " y=";
-            text += QString::number(area.top);
-            text += " w=";
-            text += QString::number(area.width);
-            text += " h=";
-            text += QString::number(area.height);
-            text += "]";
-
-            tool_info_label_->setText(text);
-        }
-
-        else
-        {
-            tool_info_label_->setText({});
-        }
-
-        secondary_tool_info_label_->setText({});
-    }
-
-    void MainWindow::area_selected(core::IntRect area)
-    {
-        fill_dialog_->set_selection_fill_enabled(area.width != 0 && area.height != 0);
-    }
-
-    void MainWindow::tiles_moved(core::Vector2i offset)
-    {
-        QString text = "Offset: ";
-        text += QString::number(offset.x);
-        text += ", ";
-        text += QString::number(offset.y);
-
-        tool_info_label_->setText(text);
-    }
-
-    void MainWindow::tiles_rotated(core::Rotation<double> delta)
-    {
-        QString text = "Rotation: ";
-        text += QString::number(static_cast<int>(delta.degrees()));
-        text += L'°';
-
-        tool_info_label_->setText(text);
-    }
-
-    void MainWindow::tiles_movement_finished()
-    {
-        tool_info_label_->setText({});
-        secondary_tool_info_label_->setText({});
-    }
-
-    void MainWindow::tiles_rotation_finished()
-    {
-        tool_info_label_->setText({});
-        secondary_tool_info_label_->setText({});
-    }
-    
-    void MainWindow::pit_defined(core::IntRect pit)
-    {
-        QString text = "Pit defined from (";
-        text += QString::number(pit.left);
-        text += ", ";
-        text += QString::number(pit.top);
-        text += ") to (";
-        text += QString::number(pit.right());
-        text += ", ";
-        text += QString::number(pit.bottom());
-        text += ").";
-
-        tool_info_label_->setText(text);
-        secondary_tool_info_label_->setText({});
-    }
-
-    void MainWindow::pit_undefined()
-    {
-        tool_info_label_->setText("No pit defined.");
-        secondary_tool_info_label_->setText({});
+        action->trigger();
     }
 
     void MainWindow::toggle_layer_view()
@@ -787,12 +750,5 @@ namespace interface
     void MainWindow::toggle_history_view()
     {
         ui_.historyWindow->setVisible(!ui_.historyWindow->isVisible());
-    }
-
-    void MainWindow::mouse_move(const QPoint& point)
-    {
-        auto label_text = std::to_string(point.x()) + ", " + std::to_string(point.y());
-
-        position_label_->setText(QString::fromStdString(label_text));
     }
 }

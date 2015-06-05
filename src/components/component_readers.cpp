@@ -37,7 +37,13 @@ namespace components
 {
     std::istream& readers::operator>>(std::istream& stream, Tile& tile)
     {
-        return stream >> tile.id >> tile.position.x >> tile.position.y >> tile.rotation;
+        std::int32_t degrees;
+        if (stream >> tile.id >> tile.position.x >> tile.position.y >> degrees)
+        {
+            tile.rotation = convert_rotation(degrees);
+        }
+
+        return stream;
     }
 
     std::istream& readers::operator>>(std::istream& stream, LevelTile& tile)

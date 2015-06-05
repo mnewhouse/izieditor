@@ -51,6 +51,10 @@ namespace components
         boost::optional<std::int32_t> start_direction_override_;
         boost::optional<core::IntRect> pit_;
 
+        std::int32_t gravity_strength_ = 0;
+        std::int32_t gravity_direction_ = 0;
+        TrackType track_type_ = TrackType::Racing;
+
         std::vector<ControlPoint> control_points_;
 
         TerrainLibrary terrain_library_;
@@ -61,7 +65,16 @@ namespace components
         std::string track_author_;
         std::string track_pattern_;
 
-        void sort_tile_list();
+        std::vector<TileDefinition> contained_tiles_;
+        std::vector<TileGroupDefinition> contained_tile_groups_;
+        std::vector<TerrainDefinition> contained_terrains_;
+        std::vector<SubTerrain> contained_sub_terrains_;
+        std::vector<TerrainId> contained_kill_terrains_;
+
+
+
+        void remove_contained_tile_definition(components::TileId tile_id);
+
         std::size_t allocate_layer_id();
     };
 
@@ -267,6 +280,16 @@ namespace components
         track_features_->num_levels_ = num_levels;
     }
 
+    void Track::set_track_type(TrackType track_type)
+    {
+        track_features_->track_type_ = track_type;
+    }
+
+    TrackType Track::track_type() const
+    {
+        return track_features_->track_type_;
+    }
+
     const std::string& Track::name() const
     {
         return track_features_->track_name_;
@@ -307,18 +330,46 @@ namespace components
         track_features_->track_pattern_ = std::move(pattern);
     }
 
+    void Track::TrackFeatures::remove_contained_tile_definition(components::TileId tile_id)
+    {
+        auto& tiles = contained_tiles_;
+        tiles.erase(std::remove_if(tiles.begin(), tiles.end(),
+            [tile_id](const TileDefinition& tile_def)
+        {
+            return tile_def.id == tile_id;
+        }), tiles.end());
+
+        auto& tile_groups = contained_tile_groups_;
+        tile_groups.erase(std::remove_if(tile_groups.begin(), tile_groups.end(),
+            [tile_id](const TileGroupDefinition& tile_group)
+        {
+            return tile_group.id() == tile_id;
+        }), tile_groups.end());
+    }
+
     void Track::define_tile(const TileDefinition& tile_def)
     {
+        track_features_->remove_contained_tile_definition(tile_def.id);
         track_features_->tile_library_.define_tile(tile_def);
     }
 
     void Track::define_tile_group(const TileGroupDefinition& tile_group_def)
     {
+        track_features_->remove_contained_tile_definition(tile_group_def.id());
+
         track_features_->tile_library_.define_tile_group(tile_group_def);
     }
 
     void Track::define_terrain(const TerrainDefinition& terrain_def)
     {
+        auto terrain_id = terrain_def.id;
+        auto& contained = track_features_->contained_terrains_;
+        contained.erase(std::remove_if(contained.begin(), contained.end(),
+            [terrain_id](const TerrainDefinition& terrain_def)
+        {
+            return terrain_def.id == terrain_id;
+        }), contained.end());
+
         track_features_->terrain_library_.define_terrain(terrain_def);
     }
 
@@ -327,12 +378,93 @@ namespace components
         track_features_->terrain_library_.define_sub_terrain(sub_terrain);
     }
 
+    void Track::define_kill_terrain(TerrainId terrain_id)
+    {
+        auto& kill_terrains = track_features_->contained_kill_terrains_;
+        kill_terrains.erase(std::remove(kill_terrains.begin(), kill_terrains.end(), terrain_id));
+
+        track_features_->terrain_library_.define_kill_terrain(terrain_id);
+    }
+
+    void Track::define_contained_tile(TileDefinition tile_def,
+        const std::string& pattern, const std::string& image)
+    {
+        define_tile(tile_def);
+
+        tile_def.pattern_file = pattern;
+        tile_def.image_file = image;
+        track_features_->contained_tiles_.push_back(tile_def);
+    }
+
+    void Track::define_contained_tile_group(const TileGroupDefinition& tile_group_definition)
+    {
+        define_tile_group(tile_group_definition);
+
+        track_features_->contained_tile_groups_.push_back(tile_group_definition);
+    }
+
+    void Track::define_contained_terrain(const TerrainDefinition& terrain_definition)
+    {
+        define_terrain(terrain_definition);
+
+        track_features_->contained_terrains_.push_back(terrain_definition);
+    }
+
+    void Track::define_contained_sub_terrain(const SubTerrain& sub_terrain)
+    {
+        define_sub_terrain(sub_terrain);
+
+        track_features_->contained_sub_terrains_.push_back(sub_terrain);
+    }
+
+    void Track::define_contained_kill_terrain(TerrainId terrain_id)
+    {
+        track_features_->contained_kill_terrains_.push_back(terrain_id);
+    }
+
+
     void Track::append_control_point(const ControlPoint& control_point)
     {
         std::uint32_t id = track_features_->control_points_.size();
 
         track_features_->control_points_.push_back(control_point);
         track_features_->control_points_.back().id = id;
+    }
+
+    void Track::insert_control_point(std::size_t index, const ControlPoint& control_point)
+    {
+        auto& control_points = track_features_->control_points_;
+        if (index < control_points.size())
+        {
+            control_points.insert(control_points.begin() + index, control_point);
+            for (; index != control_points.size(); ++index)
+            {
+                control_points[index].id = index;
+            }
+        }
+    }
+
+    void Track::update_control_point(std::size_t index, ControlPoint point)
+    {
+        point.id = index;
+        if (index < track_features_->control_points_.size())
+        {
+            track_features_->control_points_[index] = point;
+        }
+    }
+    
+    void Track::delete_control_point(std::size_t index)
+    {
+        auto& control_points = track_features_->control_points_;
+        if (index < control_points.size())
+        {
+            control_points.erase(control_points.begin() + index);
+            
+            for (; index != control_points.size(); ++index)
+            {
+                control_points[index].id = index;
+            }
+        }
     }
 
     void Track::delete_last_control_point()
@@ -350,6 +482,34 @@ namespace components
         track_features_->start_points_.push_back(start_point);
     }
 
+    void Track::insert_start_point(std::size_t index, const StartPoint& start_point)
+    {
+        auto& start_points = track_features_->start_points_;
+        if (index < start_points.size())
+        {
+            start_points.insert(start_points.begin() + index, start_point);
+        }
+    }
+
+    void Track::update_start_points(const std::vector<StartPoint>& start_points)
+    {
+        track_features_->start_points_ = start_points;
+
+        if (start_points.size() > 20)
+        {
+            track_features_->start_points_.resize(20);
+        }
+    }
+
+    void Track::delete_start_point(std::size_t index)
+    {
+        auto& start_points = track_features_->start_points_;
+        if (index < start_points.size())
+        {
+            start_points.erase(start_points.begin() + index);
+        }
+    }
+
     void Track::delete_last_start_point()
     {
         auto& start_points = track_features_->start_points_;
@@ -362,6 +522,16 @@ namespace components
     bool Track::is_start_direction_overridden() const
     {
         return track_features_->start_direction_override_.is_initialized();
+    }
+
+    void Track::use_default_start_direction()
+    {
+        track_features_->start_direction_override_ = boost::none;
+    }
+
+    void Track::set_start_direction(std::int32_t start_direction)
+    {
+        track_features_->start_direction_override_ = start_direction;
     }
 
     std::int32_t Track::start_direction() const
@@ -383,6 +553,26 @@ namespace components
         return 0;
     }
 
+    void Track::set_gravity_strength(std::int32_t gravity_strength)
+    {
+        track_features_->gravity_strength_ = std::min(std::max(gravity_strength, 0), 10000);
+    }
+
+    std::int32_t Track::gravity_strength() const
+    {
+        return track_features_->gravity_strength_;
+    }
+
+    void Track::set_gravity_direction(std::int32_t gravity_direction)
+    {
+        track_features_->gravity_direction_ = std::min(std::max(gravity_direction, 0), 359);
+    }
+
+    std::int32_t Track::gravity_direction() const
+    {
+        return track_features_->gravity_direction_;
+    }
+
     void Track::define_pit(core::IntRect pit)
     {
         track_features_->pit_ = pit;
@@ -396,5 +586,30 @@ namespace components
     const core::IntRect* Track::pit() const
     {
         return track_features_->pit_.get_ptr();
+    }
+
+    const std::vector<TileDefinition>& Track::contained_tile_definitions() const
+    {
+        return track_features_->contained_tiles_;
+    }
+
+    const std::vector<TileGroupDefinition>& Track::contained_tile_group_definitions() const
+    {
+        return track_features_->contained_tile_groups_;
+    }
+
+    const std::vector<TerrainDefinition>& Track::contained_terrain_definitions() const
+    {
+        return track_features_->contained_terrains_;
+    }
+
+    const std::vector<SubTerrain>& Track::contained_sub_terrain_definitions() const
+    {
+        return track_features_->contained_sub_terrains_;
+    }
+
+    const std::vector<TerrainId>& Track::contained_kill_terrains() const
+    {
+        return track_features_->contained_kill_terrains_;
     }
 }

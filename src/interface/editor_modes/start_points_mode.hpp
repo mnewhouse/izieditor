@@ -56,9 +56,14 @@ struct StartPointsMode
     void render(sf::RenderTarget& render_target, sf::RenderStates render_states,
         const graphics::FontBitmap& font_bitmap);
 
-    void mouse_press_event(QMouseEvent* event);
+    virtual void mouse_press_event(QMouseEvent* event) override;
+    virtual void mouse_release_event(QMouseEvent* event) override;
+    virtual void mouse_move_event(QMouseEvent* event, core::Vector2i track_position, core::Vector2i track_delta) override;
+
     void place_start_point(core::Vector2i position, core::Vector2i face_towards, bool fix_rotation);
+
     void delete_last_start_point();
+    void delete_selected_start_point();
 
     virtual void tool_changed(EditorTool tool) override;
 
@@ -66,7 +71,21 @@ private:
     virtual std::uint32_t enabled_tools() const override;
     virtual void on_activate() override;
 
+    void select_start_point(std::size_t index);
+    void deselect_start_point();
+
+    void rotate_start_point_towards(std::size_t index, core::Vector2i target_point, bool fix_rotation);
+
+    void commit_start_point_changes(const std::string& action_description);
+    void reload_start_points();
+
+    void update_start_point_info(std::size_t index);
+    void update_start_point_info();
+
     boost::optional<core::Vector2i> start_point_position_;
+    boost::optional<std::size_t> hovered_start_point_index_;
+    boost::optional<std::size_t> selected_start_point_index_;
+
     std::vector<components::StartPoint> start_points_;
     std::vector<sf::Vertex> vertex_cache_;
 };        

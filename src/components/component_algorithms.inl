@@ -63,24 +63,25 @@ void components::fill_area(const TileGroupDefinition& tile_group, const TileLibr
         transformed_area = core::transform_rect(transformed_area, -sin, cos);
     }
 
-    double center_x = transformed_area.left + transformed_area.width * 0.5;
-    double center_y = transformed_area.top + transformed_area.height * 0.5;
+    core::Vector2<double> center(transformed_area.left + transformed_area.width * 0.5,
+        transformed_area.top + transformed_area.height * 0.5);
 
     for (double y = transformed_area.top; y < transformed_area.right(); y += y_increment)
     {
         for (double x = transformed_area.left; x < transformed_area.right(); x += x_increment)
         {
-            auto position = core::transform_point({ x - center_x, y - center_y }, sin, cos);
+            auto position = core::transform_point<double>({ x - center.x, y - center.y }, sin, cos);
 
             Tile tile;
             tile.id = tile_group.id();
-            tile.position.x = static_cast<std::int32_t>(std::round(position.x + center_x + offset_dist(rng) * box.width));
-            tile.position.y = static_cast<std::int32_t>(std::round(position.y + center_y + offset_dist(rng) * box.height));
 
-            tile.rotation = properties.rotation;
+            core::Vector2<double> offset(offset_dist(rng) * box.width, offset_dist(rng) * box.height);
+            tile.position = core::vector2_round<std::int32_t>(position + center + offset);
+
+            tile.rotation = core::Rotation<double>::degrees(static_cast<double>(properties.rotation));
             if (properties.randomize_rotation)
             {
-                tile.rotation = rotation_dist(rng);
+                tile.rotation = core::Rotation<double>::degrees(static_cast<double>(rotation_dist(rng)));
             }
 
             if (contains(area, tile.position))
@@ -100,13 +101,13 @@ void components::generate_default_start_points(const ControlPoint& finish_line, 
     double sin = std::sin(direction_rotation.radians());
     double cos = std::cos(direction_rotation.radians());
 
-    core::Vector2<double> center = finish_line.start;
+    auto center = core::vector2_cast<double>(finish_line.start);
     if (finish_line.direction == ControlPoint::Horizontal) center.x += finish_line.length * 0.5;
     else center.y += finish_line.length * 0.5;
 
     const double grid_spacing = 12.0;
 
-    core::Vector2<double> grid_direction = core::transform_point({ -1.0, 0.0 }, sin, cos);
+    core::Vector2<double> grid_direction = core::transform_point<double>({ -1.0, 0.0 }, sin, cos);
     core::Vector2<double> lateral_offset(grid_direction.y, -grid_direction.x);
     lateral_offset *= grid_spacing;
 

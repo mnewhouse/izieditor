@@ -46,8 +46,7 @@ namespace scene
         const core::IntRect image_rect = tile_def->image_rect;
         const core::IntRect pattern_rect = tile_def->pattern_rect;  
 
-        auto rotation = core::Rotation<double>::degrees(tile.rotation);
-
+        auto rotation = tile.rotation;
         auto cos = std::cos(rotation.radians());
         auto sin = std::sin(rotation.radians());
 
@@ -74,14 +73,14 @@ namespace scene
         auto source_right = static_cast<double>(tile_rect.right());
         auto source_bottom = static_cast<double>(tile_rect.bottom());
 
-        const auto point = core::transform_point({ -center_x, -center_y }, sin, cos);
+        const auto point = core::transform_point<double>({ -center_x, -center_y }, sin, cos);
 
-        auto top_left = core::transform_point({ source_left * scale_x - center_x, source_top * scale_y - center_y }, sin, cos);
-        auto bottom_left = core::transform_point({ source_left * scale_x - center_x, source_bottom * scale_y - center_y }, sin, cos);
-        auto bottom_right = core::transform_point({ source_right * scale_x - center_x, source_bottom * scale_y - center_y }, sin, cos);
-        auto top_right = core::transform_point({ source_right * scale_x - center_x, source_top * scale_y - center_y }, sin, cos);
+        auto top_left = core::transform_point<double>({ source_left * scale_x - center_x, source_top * scale_y - center_y }, sin, cos);
+        auto bottom_left = core::transform_point<double>({ source_left * scale_x - center_x, source_bottom * scale_y - center_y }, sin, cos);
+        auto bottom_right = core::transform_point<double>({ source_right * scale_x - center_x, source_bottom * scale_y - center_y }, sin, cos);
+        auto top_right = core::transform_point<double>({ source_right * scale_x - center_x, source_top * scale_y - center_y }, sin, cos);
 
-        const auto tile_position = placed_tile.tile.position;
+        const auto tile_position = core::vector2_cast<double>(placed_tile.tile.position);
 
         top_left += tile_position;
         bottom_left += tile_position;

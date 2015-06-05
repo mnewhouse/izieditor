@@ -22,6 +22,10 @@
   <property name="windowTitle">
    <string>IziEditor</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="icons.qrc">
+    <normaloff>:/Icons/resources/izieditor.ico</normaloff>:/Icons/resources/izieditor.ico</iconset>
+  </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout">
     <property name="leftMargin">
@@ -96,6 +100,9 @@
     <addaction name="actionNew"/>
     <addaction name="actionOpen"/>
     <addaction name="actionSave"/>
+    <addaction name="separator"/>
+    <addaction name="actionTrack_Properties"/>
+    <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
@@ -117,6 +124,8 @@
     <addaction name="separator"/>
     <addaction name="actionResize"/>
     <addaction name="actionFill_Area"/>
+    <addaction name="separator"/>
+    <addaction name="actionStrict_Rotations"/>
    </widget>
    <widget class="QMenu" name="menuMode">
     <property name="enabled">
@@ -148,6 +157,8 @@
     <addaction name="actionZoom_In"/>
     <addaction name="actionZoom_Out"/>
     <addaction name="actionZoom_to_fit"/>
+    <addaction name="action100"/>
+    <addaction name="action200"/>
     <addaction name="separator"/>
     <addaction name="menuWindows"/>
    </widget>
@@ -174,7 +185,7 @@
     <bool>true</bool>
    </property>
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>Tool Bar</string>
    </property>
    <property name="iconSize">
     <size>
@@ -209,6 +220,7 @@
    <addaction name="actionAreaSelectionTool"/>
    <addaction name="actionMoveTool"/>
    <addaction name="actionRotation_Tool"/>
+   <addaction name="actionResize_Tool"/>
    <addaction name="separator"/>
    <addaction name="actionFill_Area"/>
   </widget>
@@ -1038,6 +1050,69 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+E</string>
+   </property>
+  </action>
+  <action name="actionTrack_Properties">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/property-blue.png</normaloff>:/Icons/resources/property-blue.png</iconset>
+   </property>
+   <property name="text">
+    <string>Track Properties</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="action100">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>100%</string>
+   </property>
+  </action>
+  <action name="action200">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>200%</string>
+   </property>
+  </action>
+  <action name="actionResize_Tool">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/Icons/resources/arrow-resize.png</normaloff>:/Icons/resources/arrow-resize.png</iconset>
+   </property>
+   <property name="text">
+    <string>Resize Tool</string>
+   </property>
+  </action>
+  <action name="actionStrict_Rotations">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Strict Rotations</string>
    </property>
   </action>
  </widget>

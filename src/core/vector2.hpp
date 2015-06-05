@@ -44,10 +44,12 @@ namespace core
             : x(x), y(y)
         {}
 
+        /*
         template <typename U>
-        Vector2(Vector2<U> other)
+        explicit Vector2(Vector2<U> other)
             : x(static_cast<T>(other.x)), y(static_cast<T>(other.y))
         {}
+        */
 
         template <typename U>
         Vector2<T>& operator=(Vector2<U> other)
@@ -227,6 +229,20 @@ namespace core
     decltype(std::declval<T>() * std::declval<U>()) dot_product(Vector2<T> a, Vector2<U> b)
     {
         return a.x * b.x + a.y * b.y;
+    }
+
+    template <typename To, typename From>
+    Vector2<To> vector2_cast(const Vector2<From>& v)
+    {
+        return Vector2<To>(static_cast<To>(v.x), static_cast<To>(v.y));
+    }
+
+    template <typename To, typename From>
+    Vector2<To> vector2_round(const Vector2<From>& v)
+    {
+        using std::round;
+
+        return vector2_cast<To, From>({ round(v.x), round(v.y) });
     }
 
     using Vector2u = Vector2<std::uint32_t>;

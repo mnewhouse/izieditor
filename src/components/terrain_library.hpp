@@ -45,6 +45,7 @@ namespace components
 
         void define_terrain(TerrainDefinition TerrainDefinition);
         void define_sub_terrain(const SubTerrain& sub_terrain);
+        void define_kill_terrain(TerrainId id);
 
         const TerrainDefinition& terrain_by_id(TerrainId id) const;
         const TerrainDefinition& sub_terrain(TerrainId id, std::uint32_t index) const;

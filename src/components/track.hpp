@@ -30,7 +30,9 @@
 #include "core/rotation.hpp"
 
 #include "tile_definition.hpp"
+#include "terrain_definition.hpp"
 #include "track_layer.hpp"
+#include "track_type.hpp"
 
 #include <string>
 #include <memory>
@@ -58,9 +60,6 @@ namespace components
     struct StartPoint;
     struct ControlPoint;
 
-    struct TerrainDefinition;
-    struct SubTerrain;
-
     class Track
     {
     public:
@@ -81,11 +80,34 @@ namespace components
 
         void define_terrain(const TerrainDefinition& terrain_definition);
         void define_sub_terrain(const SubTerrain& sub_terrain);
+        void define_kill_terrain(TerrainId terrain_id);
+
+        void define_contained_tile(TileDefinition tile_definition, 
+            const std::string& pattern, const std::string& image);
+
+        void define_contained_tile_group(const TileGroupDefinition& tile_group_definition);
+        
+        void define_contained_terrain(const TerrainDefinition& terrain);
+        void define_contained_sub_terrain(const SubTerrain& sub_terrain);
+        void define_contained_kill_terrain(TerrainId terrain_id);
+
+        const std::vector<TileDefinition>& contained_tile_definitions() const;
+        const std::vector<TileGroupDefinition>& contained_tile_group_definitions() const;
+
+        const std::vector<TerrainDefinition>& contained_terrain_definitions() const;
+        const std::vector<SubTerrain>& contained_sub_terrain_definitions() const;
+        const std::vector<TerrainId>& contained_kill_terrains() const;
 
         void append_control_point(const ControlPoint& control_point);
+        void insert_control_point(std::size_t index, const ControlPoint& control_point);
+        void update_control_point(std::size_t index, ControlPoint point);
+        void delete_control_point(std::size_t index);
         void delete_last_control_point();
 
         void append_start_point(const StartPoint& start_point);
+        void insert_start_point(std::size_t index, const StartPoint& start_point);
+        void update_start_points(const std::vector<StartPoint>& start_points);
+        void delete_start_point(std::size_t index);
         void delete_last_start_point();
 
         const std::vector<ConstLayerHandle>& layers() const;
@@ -108,10 +130,20 @@ namespace components
         void set_layer_level(std::size_t layer_id, std::size_t new_level);
 
         const std::vector<StartPoint>& start_points() const;
+
         const std::vector<ControlPoint>& control_points() const;
 
         bool is_start_direction_overridden() const;
+        void use_default_start_direction();
+
         std::int32_t start_direction() const;
+        void set_start_direction(std::int32_t start_direction);
+
+        void set_gravity_strength(std::int32_t gravity_strength);
+        std::int32_t gravity_strength() const;
+
+        void set_gravity_direction(std::int32_t gravity_direction);
+        std::int32_t gravity_direction() const;
 
         void define_pit(core::IntRect pit);
         void undefine_pit();
@@ -128,6 +160,9 @@ namespace components
 
         Vector2u size() const;
         std::size_t num_levels() const;
+
+        TrackType track_type() const;
+        void set_track_type(TrackType track_type);
 
         const std::string& name() const;
         const std::string& path() const;

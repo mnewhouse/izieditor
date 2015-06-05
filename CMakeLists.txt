@@ -29,8 +29,6 @@ add_subdirectory(extlibs/zlib-1.2.8)
 add_subdirectory(extlibs/libpng-1.2.51)
 
 include_directories("${PROJECT_SOURCE_DIR}/src")
-
-include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories("${PROJECT_SOURCE_DIR}/include")
 
 include_directories(${ZLIB_INCLUDE_DIR})

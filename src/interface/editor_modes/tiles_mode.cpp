@@ -107,6 +107,8 @@ struct TileRotationTool
     core::Rotation<double> fixed_rotation_;
     core::Rotation<double> real_rotation_;
     core::Vector2<double> origin_;
+
+    bool enable_strict_rotations_ = true;
 };
 
 struct TileClipboard
@@ -256,40 +258,66 @@ void TilesMode::key_press_event(QKeyEvent* event)
 
     else if (tool == EditorTool::Movement || tool == EditorTool::TileSelection)
     {
+        std::int32_t offset = 10;
+
+        if (key_modifiers & Qt::ShiftModifier) offset = 5;
+        if (key_modifiers & Qt::ControlModifier) offset = 1;
+
         if (event->key() == Qt::Key_Left)
         {
-            move_selected_tiles(core::Vector2i(-10, 0));
+            move_selected_tiles(core::Vector2i(-offset, 0));
         }
 
         else if (event->key() == Qt::Key::Key_Right)
         {
-            move_selected_tiles(core::Vector2i(10, 0));
+            move_selected_tiles(core::Vector2i(offset, 0));
         }
 
         else if (event->key() == Qt::Key::Key_Up)
         {
-            move_selected_tiles(core::Vector2i(0, -10));
+            move_selected_tiles(core::Vector2i(0, -offset));
         }
 
         else if (event->key() == Qt::Key::Key_Down)
         {
-            move_selected_tiles(core::Vector2i(0, 10));
+            move_selected_tiles(core::Vector2i(0, offset));
+        }
+    }
+
+    else if (tool == EditorTool::Rotation)
+    {
+        auto rotation_delta = core::Rotation<double>::degrees(45.0);
+        if (key_modifiers & Qt::ShiftModifier) rotation_delta = core::Rotation<double>::degrees(5.0);
+        if (key_modifiers & Qt::ControlModifier) rotation_delta = core::Rotation<double>::degrees(1.0);
+
+        if (event->key() == Qt::Key_Left)
+        {
+            rotate_selected_tiles(-rotation_delta);
+        }
+
+        else if (event->key() == Qt::Key_Right)
+        {
+            rotate_selected_tiles(rotation_delta);
         }
     }
 }
 
 void TilesMode::wheel_event(QWheelEvent* event)
 {
-    if (event->delta() > 0)
+    if (canvas()->active_tool() == EditorTool::Placement)
     {
-        goto_next_tile();
-    }
+        if (event->delta() > 0)
+        {
+            goto_next_tile();
+        }
 
-    else if (event->delta() < 0)
-    {
-        goto_previous_tile();
+        else if (event->delta() < 0)
+        {
+            goto_previous_tile();
+        }
     }
 }
+
         
 void TilesMode::mouse_release_event(QMouseEvent* event)
 {
@@ -434,13 +462,12 @@ void TilesMode::layer_selected(std::size_t layer)
 
 void TilesMode::tool_changed(EditorTool tool)
 {
+    features_->tile_selection_.hover_layer_.clear();
+
     if (tool == EditorTool::Placement)
     {
         update_tile_placement();
-
         auto& tile_placement = features_->tile_placement_;
-        canvas()->placement_tile_changed(tile_placement.current_tile);
-        canvas()->placement_tile_rotated(tile_placement.rotation);
 
         tile_placement.fixed_position_ = boost::none;
         tile_placement.tile_position_ = canvas()->mouse_position();
@@ -458,7 +485,6 @@ void TilesMode::goto_next_tile()
         current_tile = tile_library.first_tile_group();
     }
 
-    canvas()->placement_tile_changed(current_tile);
     update_tile_placement();
 }
 
@@ -473,7 +499,6 @@ void TilesMode::goto_previous_tile()
         current_tile = tile_library.last_tile_group();
     }
 
-    canvas()->placement_tile_changed(current_tile);
     update_tile_placement();
 }
 
@@ -482,13 +507,12 @@ void TilesMode::goto_tile(components::TileId tile_id)
     const auto& tile_library = scene()->tile_library();
     auto& current_tile = features_->tile_placement_.current_tile;
 
-    current_tile = tile_library.next_tile_group(tile_id);
+    current_tile = tile_library.next_tile_group(tile_id - 1U);
     if (current_tile == nullptr)
     {
-        current_tile = tile_library.last_tile_group();
+        current_tile = tile_library.first_tile_group();
     }
 
-    canvas()->placement_tile_changed(current_tile);
     update_tile_placement();
 }
 
@@ -511,7 +535,7 @@ std::size_t TilesMode::acquire_level_layer(std::size_t level)
         return layer_it->id();
     }
 
-    return canvas()->create_layer("Layer " + std::to_string(level), level);
+    return canvas()->create_layer("Level " + std::to_string(level), level);
 
 }
 
@@ -524,7 +548,7 @@ void TilesMode::place_tile()
         components::Tile tile;
         tile.position = tile_placement.tile_position_;
         tile.id = tile_placement.current_tile->id();
-        tile.rotation = tile_placement.rotation;
+        tile.rotation = components::convert_rotation(tile_placement.rotation);
 
         std::size_t layer_id = selected_layer.id();
         if (tile.id >= 5000 && selected_layer->level == 0)
@@ -560,7 +584,7 @@ void TilesMode::place_tile_before()
         components::Tile tile;
         tile.position = tile_placement.tile_position_;
         tile.id = tile_placement.current_tile->id();
-        tile.rotation = tile_placement.rotation;
+        tile.rotation = components::convert_rotation(tile_placement.rotation);
 
         std::size_t layer_id = selected_layer.id();
         if (tile.id >= 5000 && selected_layer->level == 0)
@@ -616,7 +640,6 @@ void TilesMode::rotate_placement_tile(std::int32_t rotation_delta, bool round)
         tile_placement.rotation -= tile_placement.rotation % 45;
     }
 
-    canvas()->placement_tile_rotated(tile_placement.rotation);
     update_tile_placement();
 }
 
@@ -632,7 +655,7 @@ void TilesMode::update_tile_selection(core::Vector2i track_point)
     std::int32_t best_distance = 0;
     std::int32_t num_matches = 0;
 
-    core::Vector2<double> real_position = track_point;
+    auto real_position = core::vector2_cast<double>(track_point);
 
     auto& tile_selection = features_->tile_selection_;
     const auto& bounding_boxes = tile_selection.tile_group_bounding_boxes_;
@@ -646,8 +669,7 @@ void TilesMode::update_tile_selection(core::Vector2i track_point)
         position.x -= tile_it->position.x;
         position.y -= tile_it->position.y;
 
-        auto rotation = core::Rotation<double>::degrees(tile_it->rotation);
-        position = core::transform_point(position, -rotation);
+        position = core::transform_point(position, -tile_it->rotation);
 
         auto map_it = bounding_boxes.find(tile_group->id());
         if (map_it != bounding_boxes.end() && contains(map_it->second, position))
@@ -671,13 +693,13 @@ void TilesMode::update_tile_selection(core::Vector2i track_point)
         const auto& tile_mapping = scene()->tile_mapping();
 
         tile_selection.hover_layer_ = scene::create_display_layer(&tile, &tile + 1, tile_library, tile_mapping);
-        canvas()->tile_selection_hover_changed(&tile);
+        tile_selection_hover_changed(&tile);
     }
 
     else
     {
         tile_selection.active_index_ = boost::none;
-        canvas()->tile_selection_hover_changed(nullptr);
+        tile_selection_hover_changed(nullptr);
     }
 }
 
@@ -691,7 +713,6 @@ void TilesMode::rebuild_tile_selection_display()
         return;
     }
 
-    const auto& tile_list = selected_layer->tiles;
     const auto& tile_library = scene()->tile_library();
     const auto& tile_mapping = scene()->tile_mapping();
 
@@ -753,6 +774,7 @@ void TilesMode::select_active_tile()
         compute_rotation_origin();
 
         tile_selection_changed();
+
         canvas()->perform_action("Select tiles", command, undo_command);
     }
 }
@@ -766,7 +788,7 @@ void TilesMode::tile_selection_changed()
     canvas()->enable_tool(EditorTool::Movement, enable_tools);
     canvas()->enable_tool(EditorTool::Rotation, enable_tools);
 
-    canvas()->tile_selection_changed(tile_selection.selected_tiles_.size());
+    tile_selection_changed(tile_selection.selected_tiles_.size());
 }
 
 void TilesMode::select_tiles(const std::map<std::size_t, components::Tile>& selection)
@@ -800,19 +822,50 @@ void TilesMode::select_tile_range(std::size_t tile_index, std::size_t tile_count
     }
 }
 
+void TilesMode::select_tiles_in_area(core::IntRect area)
+{
+    auto& tile_selection = features_->tile_selection_;
+    if (auto selected_layer = canvas()->selected_layer())
+    {
+        auto& selected_tiles = tile_selection.selected_tiles_;
+        selected_tiles.clear();
+
+        for (std::size_t tile_index = 0; tile_index != selected_layer->tiles.size(); ++tile_index)
+        {
+            const auto& tile = selected_layer->tiles[tile_index];
+            if (core::contains(area, tile.position))
+            {
+                selected_tiles.emplace(tile_index, tile);
+            }
+        }
+
+        rebuild_tile_selection_display();
+        compute_rotation_origin();
+
+        tile_selection_changed();
+    }
+}
+
 void TilesMode::update_tile_placement()
 {
     const auto& tile_library = scene()->tile_library();
     const auto& tile_mapping = scene()->tile_mapping();
 
     auto& tile_placement = features_->tile_placement_;
+    auto& tile_rotation = features_->rotation_;
+
     if (tile_placement.current_tile != nullptr)
     {
+        if (tile_rotation.enable_strict_rotations_ && !tile_placement.current_tile->rotatable())
+        {
+            tile_placement.rotation = 0;
+        }
+
         components::Tile dummy_tile;
         dummy_tile.id = tile_placement.current_tile->id();
         dummy_tile.position.x = 0.0;
         dummy_tile.position.y = 0.0;
-        dummy_tile.rotation = tile_placement.rotation;
+        dummy_tile.rotation = components::convert_rotation(tile_placement.rotation);
 
         tile_placement.display_layer_ = scene::create_display_layer(&dummy_tile, &dummy_tile + 1,
             tile_library, tile_mapping);
@@ -822,6 +875,9 @@ void TilesMode::update_tile_placement()
     {
         tile_placement.display_layer_.clear();
     }
+
+    update_placement_tile_info(tile_placement.current_tile);
+    update_placement_tile_rotation_info(tile_placement.current_tile, tile_placement.rotation);
 }
 
 void TilesMode::mouse_press_event(QMouseEvent* event)
@@ -873,7 +929,7 @@ void TilesMode::move_selected_tiles(core::Vector2i offset, bool fix_position)
         movement.real_offset_ = new_real_offset;
         movement.fixed_offset_ = new_offset;
 
-        canvas()->tiles_moved(new_offset);
+        tiles_moved(new_offset);
     }
 }
 
@@ -914,7 +970,7 @@ void TilesMode::commit_tile_movement()
 
         command();
         canvas()->perform_action("Move tiles", command, undo_command);
-        canvas()->tiles_movement_finished();
+        tiles_movement_finished();
 
         features_->movement_ = {};
     }
@@ -933,24 +989,24 @@ void TilesMode::rotate_selected_tiles(core::Rotation<double> rotation_delta, boo
         if (fix_rotation)
         {
             auto fixed_degrees = std::round(new_real_rotation.degrees() / 45.0) * 45.0;
-            new_rotation = core::Rotation<double>::degrees(fixed_degrees);
+            new_rotation = components::convert_rotation(fixed_degrees);
 
             rotation_delta = new_rotation - rotation.fixed_rotation_;
         }
 
+        const auto& tiles = selected_layer->tiles;
+
         auto& tile_selection = features_->tile_selection_;
         for (auto& tile : tile_selection.selected_tiles_)
         {
-            auto rotation = core::Rotation<double>::degrees(tile.second.rotation);
-            rotation += rotation_delta;
+            if (tile.first >= tiles.size()) continue;
 
-            tile.second.rotation = static_cast<std::int32_t>(std::round(rotation.degrees()));
+            const auto& layer_tile = tiles[tile.first];            
+            tile.second.rotation = layer_tile.rotation + new_rotation;
 
-            core::Vector2<double> position = tile.second.position;
-
-            auto offset = core::transform_point(position - origin, rotation_delta);
-            tile.second.position.x = static_cast<std::int32_t>(std::round(origin.x + offset.x));
-            tile.second.position.y = static_cast<std::int32_t>(std::round(origin.y + offset.y));
+            auto position = core::vector2_cast<double>(layer_tile.position);
+            auto offset = core::transform_point(position - origin, new_rotation);
+            tile.second.position = core::vector2_round<std::int32_t>(origin + offset);
 
             scene()->update_tile_preview(selected_layer.id(), tile.first, tile.second);
         }
@@ -958,7 +1014,7 @@ void TilesMode::rotate_selected_tiles(core::Rotation<double> rotation_delta, boo
         rotation.real_rotation_ = new_real_rotation;
         rotation.fixed_rotation_ = new_rotation;
 
-        canvas()->tiles_rotated(new_rotation);
+        tiles_rotated(new_rotation);
     }
 }
 
@@ -1000,7 +1056,7 @@ void TilesMode::commit_tile_rotation()
 
         command();
         canvas()->perform_action("Rotate tiles", command, undo_command);
-        canvas()->tiles_rotation_finished();
+        tiles_rotation_finished();
 
         features_->rotation_.real_rotation_ = {};
         features_->rotation_.fixed_rotation_ = {};
@@ -1019,7 +1075,7 @@ void TilesMode::compute_rotation_origin()
     {
         float min_x = vertices.front().position.x, max_x = min_x;
         float min_y = vertices.front().position.y, max_y = min_y;
-
+        
         for (const auto& vertex : vertices)
         {
             auto position = vertex.position;
@@ -1079,9 +1135,9 @@ void TilesMode::delete_selection()
         {
             canvas()->select_layer(layer_id);
 
-            for (const auto& tile : selection)
+            for (auto it = selection.rbegin(); it != selection.rend(); ++it)
             {
-                scene()->delete_tile(layer_id, tile.first);
+                scene()->delete_tile(layer_id, it->first);
             }
 
             select_tiles({});
@@ -1091,9 +1147,9 @@ void TilesMode::delete_selection()
         {
             canvas()->select_layer(layer_id);
 
-            for (const auto& tile : selection)
+            for (auto it = selection.rbegin(); it != selection.rend(); ++it)
             {
-                scene()->insert_tile(layer_id, tile.first, tile.second);
+                scene()->insert_tile(layer_id, it->first, it->second);
             }
 
             select_tiles(selection);
@@ -1119,13 +1175,18 @@ void TilesMode::cut_selection()
             features_->clipboard_.clear_ = true;
             features_->clipboard_.tiles_.clear();
 
+
+            for (auto it = selection.rbegin(); it != selection.rend(); ++it)
+            {
+                scene()->delete_tile(layer_id, it->first);
+            }
+
             for (const auto& tile : selection)
             {
-                scene()->delete_tile(layer_id, tile.first);
                 features_->clipboard_.tiles_.push_back(tile.second);
             }
 
-            canvas()->clipboard_filled();
+            clipboard_filled();
 
             select_tiles({});
         };
@@ -1136,12 +1197,12 @@ void TilesMode::cut_selection()
             canvas()->select_layer(layer_id);
 
             features_->clipboard_ = clipboard;
-            if (clipboard.tiles_.size() == 0) canvas()->clipboard_emptied();
-            else canvas()->clipboard_filled();
+            if (clipboard.tiles_.size() == 0) clipboard_emptied();
+            else clipboard_filled();
 
-            for (const auto& tile : selection)
+            for (auto it = selection.rbegin(); it != selection.rend(); ++it)
             {
-                scene()->insert_tile(layer_id, tile.first, tile.second);
+                scene()->insert_tile(layer_id, it->first, it->second);
             }
 
             select_tiles(selection);
@@ -1167,7 +1228,7 @@ void TilesMode::copy_selection()
 
         if (!clipboard.tiles_.empty())
         {
-            canvas()->clipboard_filled();
+            clipboard_filled();
         }
     }
 }
@@ -1202,7 +1263,7 @@ void TilesMode::paste_clipboard(core::Vector2i position)
             if (clipboard.clear_)
             {
                 features_->clipboard_.tiles_.clear();
-                canvas()->clipboard_emptied();
+                clipboard_emptied();
             }
 
             canvas()->select_layer(layer_id);
@@ -1212,7 +1273,7 @@ void TilesMode::paste_clipboard(core::Vector2i position)
         auto undo_command = [=]()
         {
             features_->clipboard_ = clipboard;
-            canvas()->clipboard_filled();
+            clipboard_filled();
 
             scene()->delete_last_tiles(selected_layer.id(), clipboard.tiles_.size());
 
@@ -1324,6 +1385,122 @@ void TilesMode::customize_cursor()
 
         canvas()->set_active_cursor(cursor);
     }
+}
+
+
+void TilesMode::tile_selection_changed(std::size_t selected_tile_count)
+{
+    bool enable_tools = selected_tile_count != 0;
+
+    canvas()->enable_tool(EditorTool::Movement, enable_tools);
+    canvas()->enable_tool(EditorTool::Rotation, enable_tools);
+
+    canvas()->enable_deleting(enable_tools);
+    canvas()->enable_cutting(enable_tools);
+    canvas()->enable_copying(enable_tools);
+}
+
+
+void TilesMode::tile_selection_hover_changed(const components::Tile* tile)
+{
+    if (tile)
+    {
+        QString text = "Tile " + QString::number(tile->id);
+        canvas()->display_tool_info(text);
+
+        std::int32_t degrees = static_cast<std::int32_t>(std::round(tile->rotation.degrees()));
+
+        QString secondary_text = "x=";
+        secondary_text += QString::number(tile->position.x);
+        secondary_text += " y=";
+        secondary_text += QString::number(tile->position.y);
+        secondary_text += " r=";
+        secondary_text += QString::number(degrees);
+        secondary_text += L'°';
+        canvas()->display_secondary_tool_info(secondary_text);
+    }
+
+    else
+    {
+        canvas()->display_tool_info("");
+        canvas()->display_secondary_tool_info("");
+    }
+}
+
+void TilesMode::update_placement_tile_info(const components::TileGroupDefinition* tile_group)
+{
+    if (tile_group)
+    {
+        auto text = "Tile " + QString::number(tile_group->id());
+        canvas()->display_tool_info(text);
+    }
+
+    else
+    {
+        canvas()->display_tool_info("");
+    }
+}
+
+void TilesMode::update_placement_tile_rotation_info(const components::TileGroupDefinition* tile_group, std::int32_t rotation)
+{
+    if (!tile_group || (!tile_group->rotatable() && features_->rotation_.enable_strict_rotations_))
+    {
+        canvas()->display_secondary_tool_info("Cannot rotate");
+    }
+
+    else
+    {
+        canvas()->display_secondary_tool_info(QString::number(rotation) + L'°');
+    }   
+}
+
+
+void TilesMode::tiles_moved(core::Vector2i offset)
+{
+    QString text = "Offset: ";
+    text += QString::number(offset.x);
+    text += ", ";
+    text += QString::number(offset.y);
+
+    canvas()->display_tool_info(text);
+}
+
+void TilesMode::tiles_rotated(core::Rotation<double> delta)
+{
+    QString text = "Rotation: ";
+    text += QString::number(static_cast<int>(delta.degrees()));
+    text += L'°';
+
+    canvas()->display_tool_info(text);
+}
+
+void TilesMode::tiles_movement_finished()
+{
+    canvas()->display_tool_info("");
+    canvas()->display_secondary_tool_info("");
+}
+
+void TilesMode::tiles_rotation_finished()
+{
+    canvas()->display_tool_info("");
+    canvas()->display_secondary_tool_info("");
+}
+
+void TilesMode::clipboard_filled()
+{
+    canvas()->enable_pasting(true);
+}
+
+void TilesMode::clipboard_emptied()
+{
+    canvas()->enable_pasting(false);
+}
+
+void TilesMode::enable_strict_rotations(bool enable)
+{
+    features_->rotation_.enable_strict_rotations_ = enable;
+
+    update_tile_placement();
 }
 
 NAMESPACE_INTERFACE_MODES_END

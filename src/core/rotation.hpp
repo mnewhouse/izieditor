@@ -59,21 +59,20 @@ namespace core
         T degrees(rotation::Absolute) const;
         T radians(rotation::Absolute) const;
 
-    private:
-        void normalize();
+        Rotation<T> normalize() const;
 
+    private:
         Rotation(T radians)
             : radians_(radians)
         {
-            normalize();
         }
 
         T radians_;
-        static const long double pi;
+        static const T pi;
     };
 
     template <typename T>
-    const long double Rotation<T>::pi = 3.141592653589793238462643383279502884197169399375105820974944;
+    const T Rotation<T>::pi = T(3.141592653589793238462643383279502884197169399375105820974944);
 
     template <typename T>
     Rotation<T>::Rotation()
@@ -83,21 +82,23 @@ namespace core
 
     
     template <typename T>
-    void Rotation<T>::normalize()
+    Rotation<T> Rotation<T>::normalize() const
     {
-        const auto range = T(pi * 2.0);
+        const auto range = pi * T(2.0);
 
         using std::fmod;
 
         if (radians_ >= pi)
         {
-            radians_ = fmod(radians_ + pi, range) - pi;
+            return Rotation<T>::radians(fmod(radians_ + pi, range) - pi);
         }
 
         else if (radians_ < -pi)
         {
-            radians_ = fmod(radians_ - pi, range) + pi;
+            return Rotation<T>::radians(fmod(radians_ - pi, range) + pi);
         }
+
+        return *this;
     }
 
     template <typename T>
@@ -122,7 +123,7 @@ namespace core
     template <typename T>
     T Rotation<T>::degrees() const
     {
-        return radians_ * T(57.295779513082);
+        return radians_ * T(180.0) / pi;
     }
 
     template <typename T>
@@ -158,7 +159,7 @@ namespace core
     template <typename T>
     Rotation<T> Rotation<T>::degrees(T value)
     {
-        return Rotation<T>(value / T(57.295779513082));
+        return Rotation<T>(value / T(360.0) * pi * T(2.0));
     }
 
     template <typename T>
@@ -172,7 +173,6 @@ namespace core
     Rotation<T>& Rotation<T>::operator+=(Rotation<U> rotation)
     {
         radians_ += rotation.radians();
-        normalize();
 
         return *this;
     }
@@ -182,7 +182,6 @@ namespace core
     Rotation<T>& Rotation<T>::operator-=(Rotation<U> rotation)
     {
         radians_ -= rotation.radians();
-        normalize();
 
         return *this;
     }

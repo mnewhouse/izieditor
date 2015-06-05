@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="Icons">
+    <file>resources/arrow-resize.png</file>
+    <file>resources/izieditor.ico</file>
     <file>resources/hand.png</file>
     <file>resources/wand--plus.png</file>
     <file>resources/wand--minus.png</file>

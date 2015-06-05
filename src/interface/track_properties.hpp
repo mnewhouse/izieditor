@@ -23,46 +23,27 @@
 * SOFTWARE.
 */
 
-#ifndef PIT_MODE_HPP
-#define PIT_MODE_HPP
+#ifndef TRACK_PROPERTIES_HPP
+#define TRACK_PROPERTIES_HPP
 
-#include "mode_base.hpp"
-
-#include "core/vector2.hpp"
-#include "core/rect.hpp"
-
-#include <qevent.h>
-
-#include <SFML/Graphics.hpp>
-
-#include <boost/optional.hpp>
-
+#include <string>
 #include <cstdint>
 
-NAMESPACE_INTERFACE_MODES
+#include "components/track_type.hpp"
 
-struct PitMode
-    : ModeBase
+namespace interface
 {
-public:
-    PitMode(EditorCanvas* canvas);
+    struct TrackProperties
+    {
+        std::string author;
+        std::int32_t height_levels;
+        components::TrackType track_type;
 
-    void render(sf::RenderTarget& render_target, sf::RenderStates render_states);
-    void mouse_press_event(QMouseEvent* event);
-
-    void define_pit(core::Vector2i start, core::Vector2i end);
-    void undefine_pit();
-
-private:
-    void pit_defined(core::IntRect pit);
-    void pit_undefined();
-
-    virtual std::uint32_t enabled_tools() const override;
-    virtual void on_activate() override;
-
-    boost::optional<core::Vector2i> pit_start_;
-};
-
-NAMESPACE_INTERFACE_MODES_END
+        bool override_start_direction;
+        std::int32_t start_direction;
+        std::int32_t gravity_strength;
+        std::int32_t gravity_direction;
+    };
+}
 
 #endif

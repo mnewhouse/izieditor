@@ -48,12 +48,12 @@ void PitMode::on_activate()
 
     if (auto pit = scene()->track().pit())
     {
-        canvas()->pit_defined(*pit);
+        pit_defined(*pit);
     }
 
     else
     {
-        canvas()->pit_undefined();
+        pit_undefined();
     }
 }
 
@@ -65,13 +65,13 @@ void PitMode::define_pit(core::Vector2i start, core::Vector2i end)
     auto command = [=]()
     {
         scene()->define_pit(pit);
-        canvas()->pit_defined(pit);
+        pit_defined(pit);
     };
 
     auto undo_command = [=]()
     {
         scene()->undefine_pit();
-        canvas()->pit_undefined();
+        pit_undefined();
     };
 
     command();
@@ -88,13 +88,13 @@ void PitMode::undefine_pit()
         auto command = [=]()
         {
             scene()->undefine_pit();
-            canvas()->pit_undefined();
+            pit_undefined();
         };
 
         auto undo_command = [=]()
         {
             scene()->define_pit(pit);
-            canvas()->pit_defined(pit);
+            pit_defined(pit);
         };
 
         command();
@@ -146,6 +146,28 @@ void PitMode::render(sf::RenderTarget& render_target, sf::RenderStates render_st
 
         render_target.draw(pit_shape, render_states);
     }
+}
+
+void PitMode::pit_defined(core::IntRect pit)
+{
+    QString text = "Pit defined from (";
+    text += QString::number(pit.left);
+    text += ", ";
+    text += QString::number(pit.top);
+    text += ") to (";
+    text += QString::number(pit.right());
+    text += ", ";
+    text += QString::number(pit.bottom());
+    text += ").";
+
+    canvas()->display_tool_info(text);
+    canvas()->display_secondary_tool_info("");
+}
+
+void PitMode::pit_undefined()
+{
+    canvas()->display_tool_info("No pit defined.");
+    canvas()->display_secondary_tool_info("");
 }
 
 NAMESPACE_INTERFACE_MODES_END

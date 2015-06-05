@@ -46,13 +46,12 @@ namespace interface
         {
             sf::RenderWindow::create(reinterpret_cast<sf::WindowHandle>(winId()));
 
-            onInitialize();
-
             timer_.start(10);
 
             connect(&timer_, SIGNAL(timeout()), this, SLOT(repaint()));
 
             initialized_ = true;
+            onInitialize();
         }
     }
 
@@ -89,8 +88,7 @@ namespace interface
                 bool in_area = mouse_position_.x >= 0 && mouse_position_.y >= 0 &&
                     mouse_position_.x < screen_width && mouse_position_.y < screen_height;
 
-                cursor_visible_ = cursor_visible_ && in_area;
-                setMouseCursorVisible(!cursor_override_enabled() || !in_area);
+                cursor_visible_ = cursor_visible_ && in_area;         
             }
         }
 
@@ -106,6 +104,7 @@ namespace interface
     {
         onRender();
 
+        update_default_cursor_visibility();
         draw_cursor();
 
         display();
@@ -123,7 +122,7 @@ namespace interface
             std::forward_as_tuple(cursor_id), std::forward_as_tuple());
 
         if (result.second)
-        {           
+        {
             if (result.first->second.loadFromImage(image, rect))
             {
                 return result.first->first;
@@ -137,26 +136,45 @@ namespace interface
 
     void QtSFMLCanvas::set_active_cursor(CursorId cursor)
     {
-        active_cursor_ = cursor;
-
-        setMouseCursorVisible(!cursor_override_enabled() || !cursor_visible_);
+        if (cursor != active_cursor_)
+        {
+            active_cursor_ = cursor;
+        }      
     }
 
     void QtSFMLCanvas::set_prioritized_cursor(CursorId cursor)
     {
-        prioritized_cursor_ = cursor;
+        if (prioritized_cursor_ != cursor)
+        {
+            prioritized_cursor_ = cursor;
+        }
+    }
 
-        setMouseCursorVisible(!cursor_override_enabled() || !cursor_visible_);
+    QtSFMLCanvas::CursorId QtSFMLCanvas::active_cursor() const
+    {
+        return prioritized_cursor_ != InvalidCursorId ? prioritized_cursor_ : active_cursor_;
     }
 
     bool QtSFMLCanvas::cursor_override_enabled() const
     {
-        return prioritized_cursor_ != InvalidCursorId || active_cursor_ != InvalidCursorId;
+        return active_cursor() != InvalidCursorId;
+    }
+
+    void QtSFMLCanvas::update_default_cursor_visibility()
+    {
+        auto cursor_id = active_cursor();
+        if (cursor_visible_ != was_cursor_visible_ || cursor_id != last_cursor_)
+        {
+            setMouseCursorVisible(cursor_id == InvalidCursorId || !cursor_visible_);
+        }
+
+        was_cursor_visible_ = cursor_visible_;
+        last_cursor_ = cursor_id;
     }
 
     void QtSFMLCanvas::draw_cursor()
     {
-        auto cursor_id = prioritized_cursor_ != InvalidCursorId ? prioritized_cursor_ : active_cursor_;
+        auto cursor_id = active_cursor();
 
         auto map_it = cursor_map_.find(cursor_id);
         if (cursor_override_enabled() && cursor_visible_ && map_it != cursor_map_.end())
@@ -180,15 +198,11 @@ namespace interface
     {
         QWidget::leaveEvent(event);
         cursor_visible_ = false;
-
-        setMouseCursorVisible(true);
     }
 
     void QtSFMLCanvas::enterEvent(QEvent* event)
     {
         QWidget::leaveEvent(event);
         cursor_visible_ = true;
-
-        setMouseCursorVisible(!cursor_override_enabled());
     }
 }

@@ -50,6 +50,9 @@ namespace interface
         void cancel_track_creation();
         void validate_track_name(const QString& text);
 
+        void use_size_preset(int index);
+        void use_custom_size_preset(int index);
+
         void remove_asset();
         void add_asset();
 

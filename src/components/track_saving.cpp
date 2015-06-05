@@ -52,6 +52,169 @@ namespace components
         save_track(track, pattern_store, track.path());
     }
 
+    void save_tile_definitions(std::ostream& stream, std::vector<TileDefinition> tile_definitions)
+    {
+        std::sort(tile_definitions.begin(), tile_definitions.end(), 
+            [](const TileDefinition& a, const TileDefinition& b)
+        {
+            using helper_pair = std::pair<const std::string&, const std::string&>;
+            return helper_pair(a.pattern_file, a.image_file) < helper_pair(b.pattern_file, b.image_file);
+        });
+
+        for (auto it = tile_definitions.begin(); it != tile_definitions.end();)
+        {
+            const std::string& pattern = it->pattern_file;
+            const std::string& image = it->image_file;
+
+            auto last = std::find_if_not(std::next(it), tile_definitions.end(), 
+                [&](const TileDefinition& tile_def)
+            {
+                return tile_def.pattern_file == pattern && tile_def.image_file == image;
+            });
+
+            stream << "TileDefinition " << pattern << " " << image << "\n";
+
+            for (; it != last; ++it)
+            {
+                const TileDefinition& tile_def = *it;
+                core::IntRect pat_rect = tile_def.pattern_rect;
+                core::IntRect img_rect = tile_def.image_rect;
+
+                stream << "  Tile " << tile_def.id << " " <<
+                    pat_rect.left << " " << pat_rect.top << " " << pat_rect.width << " " << pat_rect.height << " " <<
+                    img_rect.left << " " << img_rect.top << " " << img_rect.width << " " << img_rect.height << "\n";
+            }
+            
+            stream << "End\n";
+        }
+    }
+
+    void save_tile_group_definitions(std::ostream& stream, const std::vector<TileGroupDefinition>& tile_group_definitions)
+    {
+        for (const auto& tile_group : tile_group_definitions)
+        {
+            const auto& sub_tiles = tile_group.sub_tiles();
+            stream << "TileGroup " << tile_group.id() << " " << sub_tiles.size() << "\n";
+
+            for (const auto& sub_tile : sub_tiles)
+            {
+                core::Vector2i pos = sub_tile.position;
+
+                double degrees = sub_tile.rotation.normalize().degrees(core::rotation::absolute);
+                std::int32_t rotation = static_cast<std::int32_t>(std::round(degrees));
+                
+                if (sub_tile.level == 0)
+                {
+                    stream << "  A " << sub_tile.id << " " << pos.x << " " << pos.y << " " << rotation << "\n";
+                }
+
+                else
+                {
+                    stream << "  LevelTile " << sub_tile.level << " " << sub_tile.id << " " <<
+                        pos.x << " " << pos.y << " " << rotation << "\n";
+                }
+            }
+
+            stream << "End\n";
+        }
+    }
+
+    void save_terrain_definitions(std::ostream& stream, const std::vector<TerrainDefinition>& terrain_definitions)
+    {
+        TerrainDefinition default_terrain;
+        
+        for (const auto& terrain : terrain_definitions)
+        {
+            stream << "Terrain " << terrain.name << "\n";
+            stream << "  id " << +terrain.id << "\n";
+            stream << "  isWall " << +terrain.is_wall << "\n";
+
+            if (terrain.is_wall)
+            {
+                stream << "  bounciness " << terrain.bounciness << "\n";
+
+                if (terrain.viscosity != default_terrain.viscosity) 
+                    stream << "  viscosity " << terrain.viscosity << "\n";
+
+                if (terrain.acceleration != default_terrain.acceleration)
+                    stream << "  acceleration " << terrain.acceleration << "\n";
+
+                if (terrain.braking != default_terrain.braking)
+                    stream << "  braking " << terrain.braking << "\n";
+
+                if (terrain.grip != default_terrain.grip)
+                    stream << "  grip " << terrain.grip << "\n";
+
+                if (terrain.steering != default_terrain.steering)
+                {
+                    stream << "  steering " << terrain.steering << "\n";
+                }
+            }
+
+            else
+            {
+                if (terrain.bounciness != default_terrain.bounciness)
+                    stream << "  bounciness " << terrain.bounciness << "\n";
+
+                stream << "  viscosity " << terrain.viscosity << "\n";
+                stream << "  acceleration " << terrain.acceleration << "\n";
+                stream << "  braking " << terrain.braking << "\n";
+                stream << "  grip " << terrain.grip << "\n";
+                stream << "  steering " << terrain.steering << "\n";
+            }
+
+            if (terrain.slowing != default_terrain.slowing)
+                stream << "  slowing " << terrain.slowing << "\n";
+
+            if (terrain.jump != default_terrain.jump)
+                stream << "  jump " << terrain.jump << "\n";
+
+            if (terrain.maxjumpspeed != default_terrain.maxjumpspeed)
+                stream << "  maxjumpspeed " << terrain.maxjumpspeed << "\n";
+
+            if (terrain.energyloss != default_terrain.energyloss)
+                stream << "  energyloss " << terrain.energyloss << "\n";
+
+            if (terrain.gravity != default_terrain.gravity)
+            {
+                stream << "  gravity " << terrain.gravity << "\n";
+                stream << "  gravitydirection " << terrain.gravitydirection << "\n";
+            }
+
+            if (terrain.size != default_terrain.size)
+                stream << "  size " << terrain.size << "\n";
+
+            if (!terrain.is_wall)
+            {
+                stream << "  skidMark " << +terrain.skid_mark << "\n";
+                stream << "  tyreMark " << +terrain.tyre_mark << "\n";
+            }            
+
+            stream << "  red " << +terrain.red << "\n";
+            stream << "  green " << +terrain.green << "\n";
+            stream << "  blue " << +terrain.blue << "\n";
+
+            stream << "End";
+        }
+    }
+    
+    void save_sub_terrain_definitions(std::ostream& stream, const std::vector<SubTerrain>& sub_terrains)
+    {
+        for (const auto& sub_terrain : sub_terrains)
+        {
+            stream << "SubTerrain " << +sub_terrain.terrain_id << " " << +sub_terrain.component_id << " " <<
+                sub_terrain.level_start << " " << sub_terrain.level_count << "\n";
+        }
+    }
+
+    void save_kill_terrains(std::ostream& stream, const std::vector<TerrainId>& kill_terrains)
+    {
+        for (TerrainId terrain : kill_terrains)
+        {
+            stream << "KillTerrain" << +terrain << "\n";
+        }
+    }
+
     void save_track(const Track& track, const PatternStore& pattern_store, const std::string& file_name)
     {
         namespace bfs = boost::filesystem;
@@ -90,9 +253,28 @@ namespace components
         }
         out << "Pattern " << pattern_file << "\n";
 
+        auto track_type = track.track_type();
+        if (track_type == TrackType::PunaBall) out << "PunaBallTrack\n";
+        else if (track_type == TrackType::Battle) out << "BattleTrack\n";
+        else if (track_type == TrackType::XBumpz) out << "BattleTrack Bumpz\n";
+        else if (track_type == TrackType::SingleLap) out << "SingleLapTrack\n";
+
         for (const auto& asset : track.assets())
         {
             out << "Include " << asset << "\n";
+        }
+
+        save_tile_definitions(out, track.contained_tile_definitions());
+        save_tile_group_definitions(out, track.contained_tile_group_definitions());
+        save_terrain_definitions(out, track.contained_terrain_definitions());
+        save_sub_terrain_definitions(out, track.contained_sub_terrain_definitions());
+        save_kill_terrains(out, track.contained_kill_terrains());
+
+        std::int32_t gravity = track.gravity_strength();
+        if (gravity > 0)
+        {
+            out << "Gravity " << gravity << "\n";
+            out << "GravityDirection " << track.gravity_direction() << "\n";
         }
 
         const auto& control_points = track.control_points();
@@ -118,7 +300,8 @@ namespace components
 
             for (const auto& point : start_points)
             {
-                out << "  Point " << point.position.x << " " << point.position.y << " " << point.rotation << "\n";
+                out << "  Point " << point.position.x << " " << point.position.y << " " << 
+                    point.rotation << " " << point.level << "\n";
             }
 
             out << "End\n";
@@ -131,7 +314,9 @@ namespace components
             {
                 std::int32_t x = tile.position.x;
                 std::int32_t y = tile.position.y;
-                std::int32_t rotation = tile.rotation;
+
+                double degrees = tile.rotation.normalize().degrees(core::rotation::absolute);
+                std::int32_t rotation = static_cast<std::int32_t>(std::round(degrees));
 
                 if (layer->level == 0)
                 {

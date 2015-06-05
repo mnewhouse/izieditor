@@ -62,7 +62,7 @@ namespace components
             md5 << x << y << rotation << level;
         }
 
-        core::Vector2i track_size = track.size();
+        auto track_size = core::vector2_cast<std::int32_t>(track.size());
         md5 << track_size.y << track_size.x;
 
         std::int32_t num_levels = track.num_levels();

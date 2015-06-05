@@ -208,7 +208,7 @@ scene::impl::ImageRectMap scene::impl::compute_image_rects_no_overlap(const Tile
     for (const TileDefinition* tile_def = tile_library.first_tile(); tile_def != nullptr;
         tile_def = tile_library.next_tile(tile_def->id))
     {
-        const std::string& image_file = tile_def->image_file();
+        const std::string& image_file = tile_def->image_file;
         IntRect image_rect = tile_def->image_rect;
 
         auto& rect_list = result[image_file];
@@ -310,7 +310,7 @@ bool scene::impl::Partition::allocate_tile_space(const TileDefinition& tile_def,
     auto result = allocate_space({ rect.width, rect.height });
     if (result.width == rect.width && result.height == rect.height)
     {
-        auto& placement_list = tile_placement[tile_def.image_file()];
+        auto& placement_list = tile_placement[tile_def.image_file];
         placement_list.emplace_back();
         placement_list.back().source_rect = rect;
         placement_list.back().full_source_rect = rect;
@@ -357,7 +357,7 @@ void scene::impl::PartitionManager::allocate_fragmented_tile_space(const TileDef
             auto partition = create_partition();            
             fragment.target_rect = partition->allocate_space({ fragment.source_rect.width, fragment.source_rect.height });
 
-            auto& fragment_list = partition->tile_placement[tile_def.image_file()];
+            auto& fragment_list = partition->tile_placement[tile_def.image_file];
             fragment_list.push_back(fragment);
         }
     }
@@ -392,7 +392,7 @@ scene::TileMapping scene::create_tile_mapping(const TileLibrary& tile_library,
             
             if (!tile_def) continue;
 
-            const std::string& image_file = tile_def->image_file();
+            const std::string& image_file = tile_def->image_file;
             IntRect image_rect = tile_def->image_rect;
 
             const IntRect* enclosing_rect = impl::find_enclosing_rect(image_rect_map, image_file, image_rect);
@@ -432,7 +432,7 @@ scene::TileMapping scene::create_tile_mapping(const TileLibrary& tile_library,
     std::unordered_map<std::string, std::vector<const TileDefinition*>> tiles_by_image;
     for (auto tile = tile_library.first_tile(); tile != nullptr; tile = tile_library.next_tile(tile->id))
     {
-        const auto& file = tile->image_file();
+        const auto& file = tile->image_file;
         tiles_by_image[file].push_back(tile);
     }
 

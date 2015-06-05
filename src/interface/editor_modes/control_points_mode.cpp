@@ -45,18 +45,23 @@ void ControlPointsMode::render(sf::RenderTarget& render_target, sf::RenderStates
     const graphics::FontBitmap& font_bitmap)
 {
     sf::RectangleShape shape;
-    shape.setFillColor(sf::Color(0, 255, 255));
-
     float inverse_zoom = 1.0f / canvas()->zoom_level();
 
     const auto& control_points = scene()->track().control_points();
-    for (const auto& point : control_points)
+    for (std::size_t index = 0; index != control_points.size(); ++index)
     {
+        const auto& point = control_points[index];
         shape.setPosition(point.start.x, point.start.y);
 
         sf::Vector2f size(point.length, inverse_zoom);
         if (point.direction == components::ControlPoint::Vertical) std::swap(size.x, size.y);
         shape.setSize(size);
+
+        sf::Color color(0, 255, 255);
+        if (hovered_control_point_index_ && *hovered_control_point_index_ == index) color = sf::Color(255, 255, 0);
+        if (selected_control_point_index_ && *selected_control_point_index_ == index) color = sf::Color(255, 255, 255);
+
+        shape.setFillColor(color);
 
         render_target.draw(shape);
     }
@@ -101,7 +106,6 @@ void ControlPointsMode::render(sf::RenderTarget& render_target, sf::RenderStates
 
 void ControlPointsMode::on_activate()
 {
-    canvas()->set_active_tool(EditorTool::Placement);
 }
 
 void ControlPointsMode::tool_changed(EditorTool tool)
@@ -111,24 +115,176 @@ void ControlPointsMode::tool_changed(EditorTool tool)
 
 std::uint32_t ControlPointsMode::enabled_tools() const
 {
-    return EditorTool::Placement | 0U;
+    return EditorTool::Placement | EditorTool::TileSelection;
 }
 
 void ControlPointsMode::mouse_press_event(QMouseEvent* event)
 {
-    if (canvas()->active_tool() == EditorTool::Placement && event->button() == Qt::LeftButton)
+    auto tool = canvas()->active_tool();
+    if (tool == EditorTool::Placement && event->button() == Qt::LeftButton)
     {
         if (control_point_start_)
         {
+            canvas()->releaseMouse();
+
             place_control_point(*control_point_start_, canvas()->mouse_position());
             control_point_start_ = boost::none;
         }
 
         else
         {
+            canvas()->grabMouse();
+
             control_point_start_ = canvas()->mouse_position();
         }
     }
+
+    else if (tool == EditorTool::TileSelection && event->button() == Qt::LeftButton)
+    {
+        if (hovered_control_point_index_)
+        {
+            select_control_point(*hovered_control_point_index_);
+        }
+
+        else if (selected_control_point_index_)
+        {
+            deselect_control_point();
+        }
+    }
+
+    else if (tool == EditorTool::Rotation && event->button() == Qt::LeftButton && selected_control_point_index_)
+    {
+        std::size_t index = *selected_control_point_index_;
+        auto command = [=]()
+        {
+            scene()->rotate_control_point(index);
+            update_control_point_info(index);
+        };
+
+        command();
+
+        // Heu, we can use the same command for undo as well
+        canvas()->perform_action("Rotate control point", command, command);
+    }
+
+    else if ((tool == EditorTool::Movement || tool == EditorTool::Resize) &&
+        event->button() == Qt::LeftButton && selected_control_point_index_)
+    {
+        const auto& control_points = scene()->track().control_points();
+        old_point_state_ = control_points[*selected_control_point_index_];
+    }
+}
+
+void ControlPointsMode::mouse_release_event(QMouseEvent* event)
+{
+    auto tool = canvas()->active_tool();
+    if (selected_control_point_index_)
+    {
+        if (tool == EditorTool::Movement && (control_point_offset_.x != 0 || control_point_offset_.y != 0))
+        {
+            commit_control_point_movement(*selected_control_point_index_, control_point_offset_);
+            control_point_offset_ = {};
+        }
+
+        else if (tool == EditorTool::Resize && (control_point_offset_.x != 0 || control_point_offset_.y != 0))
+        {
+            commit_control_point_resize(*selected_control_point_index_, control_point_offset_);
+            control_point_offset_ = {};
+        }
+    }
+}
+
+void ControlPointsMode::mouse_move_event(QMouseEvent* event, core::Vector2i track_point, core::Vector2i track_delta)
+{
+    hovered_control_point_index_ = boost::none;
+
+    auto tool = canvas()->active_tool();
+    if (tool == EditorTool::TileSelection)
+    {
+        const auto& control_points = scene()->track().control_points();
+        for (std::size_t index = 0; index != control_points.size(); ++index)
+        {
+            const auto& point = control_points[index];
+
+            core::Vector2i start = point.start;
+            core::Vector2i size(point.length, 8);
+
+            if (point.direction == components::ControlPoint::Horizontal)
+            {
+                start.y -= 4;
+            }
+
+            else
+            {
+                start.x -= 4;
+
+                std::swap(size.x, size.y);
+            }
+
+            core::IntRect rect(start, size);
+            if (core::contains(rect, track_point))
+            {
+                hovered_control_point_index_ = index;
+                if (!selected_control_point_index_)
+                {
+                    update_control_point_info(index);
+                }
+
+                break;
+            }
+        }
+    }
+    
+    if ((event->buttons() & Qt::LeftButton) && selected_control_point_index_)
+    {
+        if (tool == EditorTool::Movement)
+        {
+            control_point_offset_ += track_delta;
+
+            std::size_t index = *selected_control_point_index_;
+            scene()->move_control_point(index, track_delta);
+            update_control_point_info(index);
+        }
+
+        else if (tool == EditorTool::Resize)
+        {
+            control_point_offset_ += track_delta;
+
+            resize_control_point(*selected_control_point_index_, control_point_offset_);
+        }
+    }
+}
+
+void ControlPointsMode::select_control_point(std::size_t index)
+{
+    selected_control_point_index_ = index;
+
+    canvas()->enable_tool(EditorTool::Movement, true);
+    canvas()->enable_tool(EditorTool::Resize, true);
+    canvas()->enable_tool(EditorTool::Rotation, true);
+
+    canvas()->enable_deleting(true);
+
+    const auto& control_points = scene()->track().control_points();
+    if (index < control_points.size())
+    {
+        old_point_state_ = control_points[index];
+    }
+
+    update_control_point_info(index);
+}
+
+void ControlPointsMode::deselect_control_point()
+{
+    selected_control_point_index_ = boost::none;
+
+    canvas()->enable_tool(EditorTool::Movement, false);
+    canvas()->enable_tool(EditorTool::Resize, false);
+    canvas()->enable_tool(EditorTool::Rotation, false);
+
+    canvas()->enable_deleting(false);
+
+    update_control_point_info();
 }
 
 void ControlPointsMode::place_control_point(core::Vector2i start, core::Vector2i end)
@@ -137,12 +293,11 @@ void ControlPointsMode::place_control_point(core::Vector2i start, core::Vector2i
 
     if (start != end)
     {
-
         std::int32_t x_diff = end.x - start.x;
         std::int32_t y_diff = end.y - start.y;
 
-        std::int32_t x_length = std::abs(x_diff);
-        std::int32_t y_length = std::abs(y_diff);
+        std::int32_t x_length = std::abs(x_diff) + 1;
+        std::int32_t y_length = std::abs(y_diff) + 1;
 
         ControlPoint point{};
         point.start = start;
@@ -161,14 +316,21 @@ void ControlPointsMode::place_control_point(core::Vector2i start, core::Vector2i
             if (y_diff < 0) point.start.y = end.y;
         }
 
+        auto index = selected_control_point_index_;
         auto command = [=]()
         {
-            scene()->append_control_point(point);
+            if (!index) scene()->append_control_point(point);
+            else
+            {
+                scene()->insert_control_point(*index, point);
+                select_control_point(*index + 1);
+            }
         };
 
         auto undo_command = [=]()
         {
-            scene()->delete_last_control_point();
+            if (!index) scene()->delete_last_control_point();
+            else scene()->delete_control_point(*index);
         };
 
         command();
@@ -197,6 +359,141 @@ void ControlPointsMode::delete_last_control_point()
 
         command();
         canvas()->perform_action("Remove control point", command, undo_command);
+    }
+
+    deselect_control_point();
+}
+
+void ControlPointsMode::commit_control_point_movement(std::size_t index, core::Vector2i offset)
+{
+    const auto& control_points = scene()->track().control_points();
+    if (index < control_points.size())
+    {
+        auto point = control_points[index], old_point = old_point_state_;
+
+        auto command = [=]()
+        {
+            scene()->update_control_point(index, point);
+        };
+
+        auto undo_command = [=]()
+        {
+            scene()->update_control_point(index, old_point);
+        };
+
+        command();
+        canvas()->perform_action("Move control point", command, undo_command);
+    }
+}
+
+void ControlPointsMode::resize_control_point(std::size_t index, core::Vector2i offset)
+{
+    auto point = old_point_state_;
+    using components::ControlPoint;
+
+    if (point.direction == ControlPoint::Horizontal)
+    {
+        point.length += offset.x;
+        if (point.length < 0)
+        {
+            point.length = std::abs(point.length);
+            point.start.x -= point.length;
+        }
+    }
+
+    else
+    {
+        point.length += offset.y;
+        if (point.length < 0)
+        {
+            point.length = std::abs(point.length);
+            point.start.y -= point.length;
+        }
+    }
+
+    scene()->update_control_point(index, point);
+    update_control_point_info(index);
+}
+
+void ControlPointsMode::commit_control_point_resize(std::size_t index, core::Vector2i offset)
+{
+    const auto& control_points = scene()->track().control_points();
+    if (index < control_points.size())
+    {
+        auto point = control_points[index], old_point = old_point_state_;
+        
+        auto command = [=]()
+        {
+            scene()->update_control_point(index, point);
+        };
+
+        auto undo_command = [=]()
+        {
+            scene()->update_control_point(index, old_point);
+        };
+
+        command();
+        canvas()->perform_action("Resize control point", command, undo_command);        
+    }
+}
+
+void ControlPointsMode::delete_selected_control_point()
+{
+    const auto& control_points = scene()->track().control_points();
+    if (selected_control_point_index_ && *selected_control_point_index_ < control_points.size())
+    {
+        std::size_t index = *selected_control_point_index_;
+        auto point = control_points[index];
+
+        auto command = [=]()
+        {
+            scene()->delete_control_point(index);
+        };
+
+        auto undo_command = [=]()
+        {
+            scene()->insert_control_point(index, point);
+        };
+
+        command();
+        canvas()->perform_action("Remove control point", command, undo_command);
+    }
+
+    deselect_control_point();
+}
+
+void ControlPointsMode::update_control_point_info()
+{
+    canvas()->display_tool_info("");
+    canvas()->display_secondary_tool_info("");
+}
+
+void ControlPointsMode::update_control_point_info(std::size_t index)
+{
+    const auto& control_points = scene()->track().control_points();
+    if (index < control_points.size())
+    {
+        using components::ControlPoint;
+        const auto& point = control_points[index];
+
+        canvas()->display_tool_info("Point " + QString::number(index));
+
+        core::Vector2i start = point.start;
+        core::Vector2i end = start;
+
+        if (point.direction == ControlPoint::Horizontal) end.x += point.length;
+        else end.y += point.length;
+
+        QString text = QString::number(start.x) + ", " + QString::number(start.y);
+        text += " -> ";
+        text += QString::number(end.x) + ", " +QString::number(end.y);
+
+        canvas()->display_secondary_tool_info(text);
+    }
+
+    else
+    {
+        update_control_point_info();
     }
 }
 

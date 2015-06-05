@@ -50,7 +50,7 @@ namespace scene
         Scene() = default;
         Scene(components::Track&& track);
 
-        void resize_track(core::Vector2i new_size);
+        void resize_track(core::Vector2u new_size);
 
         void append_tile(std::size_t layer_id, const components::Tile& tile);
 
@@ -75,15 +75,26 @@ namespace scene
         void delete_last_tiles(std::size_t layer_id, std::size_t tile_count);
 
         void append_control_point(const components::ControlPoint& point);
+        void insert_control_point(std::size_t index, const components::ControlPoint& point);
+        void update_control_point(std::size_t index, const components::ControlPoint& point);
+        void delete_control_point(std::size_t index);
         void delete_last_control_point();
 
         void append_start_point(const components::StartPoint& point);
+        void insert_start_point(std::size_t index, const components::StartPoint& start_point);
+        void update_start_points(const std::vector<components::StartPoint>& start_points);
+        void delete_start_point(std::size_t index);
         void delete_last_start_point();
 
         void define_pit(core::IntRect rect);
         void undefine_pit();
 
+        void move_control_point(std::size_t index, core::Vector2i offset);
+        void rotate_control_point(std::size_t index);
+
         const components::Track& track() const;
+        components::Track& track();
+
         const components::TileLibrary& tile_library() const;
         const components::PatternStore& pattern_store() const;
 

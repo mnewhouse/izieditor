@@ -49,7 +49,8 @@ namespace interface
         TileSelection = 4,
         Movement = 8,
         Rotation = 16,
-        All = 31
+        Resize = 32,
+        All = 63
     };
 
     inline std::uint32_t operator|(EditorTool a, EditorTool b)
@@ -83,7 +84,8 @@ namespace interface
 
         Hand,
         Movement,
-        Rotation
+        Rotation,
+        Resize
     };
 };
 

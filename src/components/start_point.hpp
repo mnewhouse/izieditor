@@ -31,8 +31,8 @@ namespace components
     struct StartPoint
     {
         core::Vector2i position;
-        std::int32_t rotation;
-        std::uint32_t level;
+        std::int32_t rotation = 0;
+        std::uint32_t level = 0;
     };
 }
 #endif

@@ -81,7 +81,9 @@ namespace interface
 
     void FillDialog::set_selection_fill_enabled(bool enable)
     {
-        ui_.fillAreaComboBox->setItemData(1, enable ? Qt::ItemIsEnabled : 0, Qt::UserRole - 1);
+        int flags = enable ? Qt::ItemIsEnabled | Qt::ItemIsSelectable : 0;
+
+        ui_.fillAreaComboBox->setItemData(1, flags, Qt::UserRole - 1);
 
         if (!enable)
         {

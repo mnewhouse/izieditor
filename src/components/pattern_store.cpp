@@ -50,7 +50,7 @@ namespace components
 
         for (auto tile = tile_library.first_tile(); tile; tile = tile_library.next_tile(tile->id))
         {
-            result.load_from_file(tile->pattern_file());
+            result.load_from_file(tile->pattern_file);
         }
 
         return result;

@@ -27,13 +27,25 @@
 
 #include "interface/main_window.hpp"
 
+#include <exception>
 #include <fstream>
 
-int main(int argc, char *argv[])
-{
-    QApplication a(argc, argv);
-    interface::MainWindow w;
-    w.show();
+#include <crtdbg.h>
 
-    return a.exec();
+int main(int argc, char* argv[])
+{
+    try
+    {
+        QApplication a(argc, argv);
+        interface::MainWindow w;
+        w.show();
+
+        return a.exec();
+    }
+
+    catch (const std::exception& error)
+    {
+        std::ofstream out("editor.log");
+        out << error.what() << std::endl;
+    }    
 }

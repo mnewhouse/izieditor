@@ -25,6 +25,7 @@
 
 #include "editor_canvas.hpp"
 #include "action.hpp"
+#include "track_properties.hpp"
 
 #include "editor_modes/mode_base.hpp"
 #include "editor_modes/tiles_mode.hpp"
@@ -74,6 +75,7 @@ namespace interface
         CursorId movement_tool_;
         CursorId rotation_tool_;
         CursorId dragging_hand_;
+        CursorId resize_tool_;
     };
 
 
@@ -84,7 +86,8 @@ namespace interface
           magic_wand_minus_(create_cursor_from_resource(canvas, ":/Icons/resources/wand--minus.png")),
           dragging_hand_(create_cursor_from_resource(canvas, ":/Icons/resources/hand.png")),
           movement_tool_(create_cursor_from_resource(canvas, ":/Icons/resources/arrow-move.png")),
-          rotation_tool_(create_cursor_from_resource(canvas, ":/Icons/resources/arrow-circle-225.png"))
+          rotation_tool_(create_cursor_from_resource(canvas, ":/Icons/resources/arrow-circle-225.png")),
+          resize_tool_(create_cursor_from_resource(canvas, ":/Icons/resources/arrow-resize.png"))
     {
     }
 
@@ -116,6 +119,9 @@ namespace interface
 
         case EditorCursor::Rotation:
             return rotation_tool_;
+
+        case EditorCursor::Resize:
+            return resize_tool_;
         }
 
         return EditorCanvas::InvalidCursorId;
@@ -162,13 +168,13 @@ namespace interface
     {
         explicit Impl(EditorCanvas* self)
             : self_(self),
-              font_bitmap_(graphics::default_font_data, graphics::default_font_data_size),
               tiles_mode_(self),
               control_points_mode_(self),
               start_points_mode_(self),
               pit_mode_(self),
               pattern_mode_(self),
-              cursor_store_(self)
+              cursor_store_(boost::none),
+              font_bitmap_(boost::none)
         {
         }
 
@@ -195,8 +201,8 @@ namespace interface
         AreaSelectionTool area_selection_;
         components::ConstLayerHandle selected_layer_;
 
-        graphics::FontBitmap font_bitmap_;
-        CursorStore cursor_store_;
+        boost::optional<graphics::FontBitmap> font_bitmap_;
+        boost::optional<CursorStore> cursor_store_;
 
         void recalculate_view();
         double compute_fitting_zoom_level();
@@ -219,6 +225,8 @@ namespace interface
 
         void set_layer_level(std::size_t layer_id, std::size_t new_level);
         void dispatch_layer_mergable_signal();
+
+        void change_track_properties(const TrackProperties& track_properties);
 
         ModeBase* mode_object(EditorMode mode);
     };
@@ -271,12 +279,12 @@ namespace interface
 
             else if (mode == EditorMode::ControlPoints)
             {
-                impl_->control_points_mode_.render(*this, render_states, impl_->font_bitmap_);
+                impl_->control_points_mode_.render(*this, render_states, *impl_->font_bitmap_);
             }
 
             else if (mode == EditorMode::StartPoints)
             {
-                impl_->start_points_mode_.render(*this, render_states, impl_->font_bitmap_);
+                impl_->start_points_mode_.render(*this, render_states, *impl_->font_bitmap_);
             }
 
             else if (mode == EditorMode::Pit)
@@ -316,6 +324,12 @@ namespace interface
         impl_->recalculate_view();
     }
 
+    void EditorCanvas::onInitialize()
+    {
+        impl_->cursor_store_.emplace(this);
+        impl_->font_bitmap_.emplace(graphics::default_font_data, graphics::default_font_data_size);
+    }
+
     void EditorCanvas::adopt_scene(std::unique_ptr<scene::Scene>& scene_ptr_)
     {
         impl_->scene_ = std::move(scene_ptr_);
@@ -348,7 +362,7 @@ namespace interface
 
         impl_->select_area({});        
 
-        show();        
+        show();
     }
 
     void EditorCanvas::zoom_in()
@@ -364,6 +378,16 @@ namespace interface
     void EditorCanvas::zoom_to_fit()
     {
         set_zoom_level(impl_->compute_fitting_zoom_level());
+    }
+
+    void EditorCanvas::zoom_100_percent()
+    {
+        set_zoom_level(1.0);
+    }
+
+    void EditorCanvas::zoom_200_percent()
+    {
+        set_zoom_level(2.0);
     }
 
     void EditorCanvas::set_zoom_level(double zoom_level)
@@ -478,6 +502,11 @@ namespace interface
         }
     }
 
+    void EditorCanvas::enable_strict_rotations(bool enable)
+    {
+        impl_->tiles_mode_.enable_strict_rotations(enable);
+    }
+
     void EditorCanvas::keyPressEvent(QKeyEvent* event)
     {
         QtSFMLCanvas::keyPressEvent(event);
@@ -522,6 +551,7 @@ namespace interface
             auto& area_selection = impl_->area_selection_;
             area_selection.selection_origin_ = mouse_position();
             area_selection.temp_selection_ = core::IntRect(area_selection.selection_origin_, core::Vector2i(0, 0));
+            area_selection.selection_rect_ = {};
 
             selection_area_changed(area_selection.temp_selection_);
         }
@@ -529,6 +559,8 @@ namespace interface
         if (event->button() == Qt::RightButton)
         {
             impl_->drag_active_ = true;
+
+            grabMouse();
 
             set_prioritized_cursor(EditorCursor::Hand);
         }
@@ -545,12 +577,22 @@ namespace interface
 
         if (active_tool() == EditorTool::AreaSelection)
         {
-            impl_->commit_area_selection();
+            auto pos = event->pos();
+            auto my_size = size();
+            bool in_area = pos.x() >= 0 && pos.y() >= 0 && pos.x() < my_size.width() && pos.y() < my_size.height();
+            auto temp_selection = impl_->area_selection_.temp_selection_;
+
+            if (in_area || (temp_selection.width != 0 && temp_selection.height != 0))
+            {
+                impl_->commit_area_selection();
+            }            
         }
 
         if (event->button() == Qt::RightButton)
         {
             impl_->drag_active_ = false;
+
+            releaseMouse();
 
             set_prioritized_cursor(EditorCursor::Default);
         }
@@ -559,6 +601,8 @@ namespace interface
     void EditorCanvas::mouseMoveEvent(QMouseEvent* event)
     {
         QtSFMLCanvas::mouseMoveEvent(event);
+
+        setFocus();
 
         auto my_size = size();
         auto new_pos = event->pos();
@@ -585,7 +629,7 @@ namespace interface
             core::Vector2i track_point(track_point_sf.x, track_point_sf.y);
             core::Vector2i delta = track_point - impl_->mouse_position_;
 
-            mouse_move(QPoint(track_point.x, track_point.y));
+            mouse_moved(track_point);
 
             auto tool = active_tool();
             auto buttons = event->buttons();
@@ -614,14 +658,20 @@ namespace interface
 
     void EditorCanvas::set_active_cursor(EditorCursor cursor)
     {
-        CursorId cursor_id = impl_->cursor_store_.cursor_id(cursor);
-        set_active_cursor(cursor_id);
+        if (impl_->cursor_store_)
+        {
+            CursorId cursor_id = impl_->cursor_store_->cursor_id(cursor);
+            set_active_cursor(cursor_id);
+        }
     }
     
     void EditorCanvas::set_prioritized_cursor(EditorCursor cursor)
     {
-        CursorId cursor_id = impl_->cursor_store_.cursor_id(cursor);
-        set_prioritized_cursor(cursor_id);
+        if (impl_->cursor_store_)
+        {
+            CursorId cursor_id = impl_->cursor_store_->cursor_id(cursor);
+            set_prioritized_cursor(cursor_id);
+        }
     }
 
     EditorTool EditorCanvas::active_tool() const
@@ -698,7 +748,7 @@ namespace interface
     {
         if (impl_->scene_)
         {
-            return impl_->scene_->track().size();
+            return core::vector2_cast<std::int32_t>(impl_->scene_->track().size());
         }
 
         return {};
@@ -747,7 +797,7 @@ namespace interface
 
         if (tool == EditorTool::TileSelection || tool == EditorTool::Movement || tool == EditorTool::Rotation)
         {
-            impl_->select_area({});
+            impl_->area_selection_ = {};
         }
     }
 
@@ -759,7 +809,6 @@ namespace interface
 
         if (old_mode != mode)
         {
-
             if (auto old_mode_object = impl_->mode_object(old_mode))
             {
                 old_mode_object->deactivate();
@@ -795,6 +844,11 @@ namespace interface
     void EditorCanvas::activate_rotation_tool()
     {
         set_active_tool(EditorTool::Rotation);
+    }
+
+    void EditorCanvas::activate_resize_tool()
+    {
+        set_active_tool(EditorTool::Resize);
     }
 
     void EditorCanvas::activate_tiles_mode()
@@ -851,9 +905,20 @@ namespace interface
 
     void EditorCanvas::delete_selection()
     {
-        if (active_mode() == EditorMode::Tiles)
+        auto mode = active_mode();
+        if (mode == EditorMode::Tiles)
         {
             impl_->tiles_mode_.delete_selection();
+        }
+
+        else if (mode == EditorMode::ControlPoints)
+        {
+            impl_->control_points_mode_.delete_selected_control_point();
+        }
+
+        else if (mode == EditorMode::StartPoints)
+        {
+            impl_->start_points_mode_.delete_selected_start_point();
         }
     }
 
@@ -877,7 +942,7 @@ namespace interface
     {
         if (active_mode() == EditorMode::Tiles)
         {
-            impl_->tiles_mode_.paste_clipboard(impl_->camera_position_);
+            impl_->tiles_mode_.paste_clipboard(core::vector2_cast<std::int32_t>(impl_->camera_position_));
         }
     }
 
@@ -903,6 +968,11 @@ namespace interface
         area_selection_.temp_selection_ = {};
         area_selection_.selection_origin_ = {};
 
+        if (active_mode_ == EditorMode::Tiles)
+        {
+            tiles_mode_.select_tiles_in_area(area);
+        }
+
         self_->area_selected(area);
     }
 
@@ -921,7 +991,7 @@ namespace interface
 
             auto undo_command = [=]()
             {
-                select_area(new_selection);
+                select_area(old_selection);
             };
 
             command();
@@ -1231,12 +1301,12 @@ namespace interface
         std::size_t index = impl_->scene_->find_layer_index(layer_id);
 
         layer_created(layer_id, index);
-        impl_->select_layer(layer);           
+        impl_->select_layer(layer);
 
         auto command = [=]()
         {
             impl_->restore_layer(layer_id, index);
-            impl_->select_layer(layer);                
+            impl_->select_layer(layer);
         };
 
         auto undo_command = [=]()
@@ -1319,17 +1389,68 @@ namespace interface
         }
     }
 
+    void EditorCanvas::Impl::change_track_properties(const TrackProperties& track_properties)
+    {
+        auto& track = scene_->track();
+        track.set_num_levels(track_properties.height_levels);
+        track.set_author(track_properties.author);
+
+        if (track_properties.override_start_direction)
+        {
+            track.set_start_direction(track_properties.start_direction);
+        }
+        
+        else
+        {
+            track.use_default_start_direction();
+        }
+        
+        track.set_gravity_strength(track_properties.gravity_strength);
+        track.set_gravity_direction(track_properties.gravity_direction);
+    }
+
+    void EditorCanvas::change_track_properties(const TrackProperties& track_properties)
+    {
+        if (impl_->scene_)
+        {
+            const auto& track = this->track();
+
+            TrackProperties old_properties;
+            old_properties.author = track.author();
+            old_properties.height_levels = track.num_levels();
+            old_properties.override_start_direction = track.is_start_direction_overridden();
+            old_properties.start_direction = track.start_direction();
+            old_properties.gravity_strength = track.gravity_strength();
+            old_properties.gravity_direction = track.gravity_direction();
+
+            auto command = [=]()
+            {
+                impl_->change_track_properties(track_properties);
+            };
+
+            auto undo_command = [=]()
+            {
+                impl_->change_track_properties(old_properties);
+            };
+
+            command();
+            perform_action("Edit Properties", command, undo_command);            
+        }
+    }
+
     void EditorCanvas::resize_track(std::int32_t new_width, std::int32_t new_height,
         HorizontalAnchor horizontal_anchor, VerticalAnchor vertical_anchor)
     {
         if (impl_->scene_)
         {
-            core::Vector2i tile_offset;
+            const auto& track = impl_->scene_->track();
+            core::Vector2<double> tile_offset;
 
-            core::Vector2i new_size(new_width, new_height);
-            core::Vector2i old_size = impl_->scene_->track().size();
-            
-            core::Vector2i growth = new_size - old_size;
+            core::Vector2u new_size(new_width, new_height);
+            core::Vector2u old_size(track.size().x, track.size().y);
+           
+            core::Vector2i growth = core::vector2_cast<std::int32_t>(new_size) - 
+                core::vector2_cast<std::int32_t>(old_size);
 
             if (horizontal_anchor == HorizontalAnchor::Right) tile_offset.x = growth.x;
             else if (horizontal_anchor == HorizontalAnchor::Center) tile_offset.x = growth.x / 2;
@@ -1352,5 +1473,46 @@ namespace interface
             command();
             perform_action("Resize track", command, undo_command);            
         }
+    }
+
+    void EditorCanvas::area_selected(core::IntRect area)
+    {
+    }
+
+    void EditorCanvas::selection_area_changed(core::IntRect area)
+    {
+        if (area.width != 0 && area.height != 0)
+        {
+            QString text = "Selection: [x=";
+            text += QString::number(area.left);
+            text += " y=";
+            text += QString::number(area.top);
+            text += " w=";
+            text += QString::number(area.width);
+            text += " h=";
+            text += QString::number(area.height);
+            text += "]";
+
+            display_tool_info(text);
+        }
+
+        else
+        {
+            display_tool_info("");
+        }
+
+        display_secondary_tool_info("");
+    }
+
+    void EditorCanvas::zoom_level_changed(double zoom_level)
+    {
+        int percentage = static_cast<int>(zoom_level * 100.0);
+        update_zoom_info(QString::number(percentage) + "%");
+    }
+
+    void EditorCanvas::mouse_moved(core::Vector2i point)
+    {
+        auto info_text = QString::number(point.x) + ", " + QString::number(point.y);
+        update_position_info(info_text);
     }
 }

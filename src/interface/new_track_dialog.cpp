@@ -42,6 +42,14 @@ namespace interface
         connect(widgets_.widthSpinBox, SIGNAL(valueChanged(int)), widgets_.widthSlider, SLOT(setValue(int)));
         connect(widgets_.heightSpinBox, SIGNAL(valueChanged(int)), widgets_.heightSlider, SLOT(setValue(int)));
 
+        connect(widgets_.widthSlider, SIGNAL(valueChanged(int)), this, SLOT(use_custom_size_preset(int)));
+        connect(widgets_.heightSlider, SIGNAL(valueChanged(int)), this, SLOT(use_custom_size_preset(int)));
+
+        connect(widgets_.widthSpinBox, SIGNAL(valueChanged(int)), this, SLOT(use_custom_size_preset(int)));
+        connect(widgets_.heightSpinBox, SIGNAL(valueChanged(int)), this, SLOT(use_custom_size_preset(int)));
+
+        connect(widgets_.sizePreset_comboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(use_size_preset(int)));
+
         connect(widgets_.browseLocation, SIGNAL(clicked()), this, SLOT(browse_locations()));
         connect(widgets_.confirmButton, SIGNAL(accepted()), this, SLOT(confirm_track_creation()));
         connect(widgets_.confirmButton, SIGNAL(rejected()), this, SLOT(cancel_track_creation()));
@@ -62,6 +70,17 @@ namespace interface
         {
             auto item = assetsList->item(row);
             item->setFlags(Qt::ItemIsEditable | Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+        }
+
+        if (parentWidget())
+        {
+            auto parent_size = parentWidget()->size();
+            auto parent_position = parentWidget()->pos();
+            auto my_size = size();
+
+            int x = parent_position.x() + (parent_size.width() - my_size.width()) / 2;
+            int y = parent_position.y() + (parent_size.height() - my_size.height()) / 2;
+            setGeometry(x, y, my_size.width(), my_size.height());
         }
     }
 
@@ -186,5 +205,43 @@ namespace interface
         }
 
         widgets_.trackName->setText(validated);
+    }
+
+    void NewTrackDialog::use_custom_size_preset(int index)
+    {
+        widgets_.sizePreset_comboBox->setCurrentIndex(0);
+    }
+
+    void NewTrackDialog::use_size_preset(int index)
+    {
+        auto size = [=]() -> std::pair<int, int>
+        {
+            switch (index)
+            {
+            case 1: return { 640, 400 };
+            case 2: return { 960, 600 };
+            case 3: return { 1280, 800 };
+            case 4: return { 1600, 1000 };
+            case 5: return { 1920, 1200 };
+            case 6: return { 2000, 2000 };
+            case 7: return { 3000, 3000 };
+            case 8: return { 4000, 4000 };
+            default: return { 0, 0 };
+            }
+        }();
+
+        if (size.first && size.second)
+        {
+            QWidget* widgets[] = { widgets_.widthSlider, widgets_.widthSpinBox, widgets_.heightSlider, widgets_.heightSpinBox };
+            for (auto widget : widgets) widget->blockSignals(true);
+
+            widgets_.widthSlider->setValue(size.first);
+            widgets_.widthSpinBox->setValue(size.first);
+
+            widgets_.heightSlider->setValue(size.second);
+            widgets_.heightSpinBox->setValue(size.second);
+
+            for (auto widget : widgets) widget->blockSignals(false);
+        }
     }
 }
